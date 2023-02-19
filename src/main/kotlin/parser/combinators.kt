@@ -63,3 +63,27 @@ fun <T> Parser<T>.many(): Parser<List<T>> {
         }
     }
 }
+
+class combine<T>(val f: combine<T>.(ParserInput) -> T): Parser<T> {
+    operator fun <T> Parser<T>.get(input: ParserInput): T {
+        return this.parse(input).panic()
+    }
+    override fun parse(input: ParserInput): Result<T, ParserError> {
+        val initPos = input.pos
+        return try {
+            Ok(f(input))
+        } catch (e: CombineException) {
+            input.pos = initPos
+            Err(e.err)
+        }
+    }
+}
+
+class CombineException(val err: ParserError): Throwable()
+
+fun <T> Result<T, ParserError>.panic(): T {
+    return when (this) {
+        is Ok<T, *> -> this.v
+        is Err<*, ParserError> -> throw CombineException(this.e)
+    }
+}

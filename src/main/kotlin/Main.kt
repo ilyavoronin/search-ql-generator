@@ -1,7 +1,4 @@
-import parser.TokenParser
-import parser.inp
-import parser.map
-import parser.or
+import parser.*
 
 fun main() {
     val p1 = TokenParser("Hello", "")
@@ -10,5 +7,20 @@ fun main() {
 
     println(p3.parse("Hello".inp()).unwrap())
     println(p3.parse("World".inp()).unwrap())
-    println(p3.parse("Dog".inp()))
+    println(p3.parse("Dog".inp()).err())
+
+    val p = combine {
+        p1[it]
+        spaces[it]
+        token(",")[it]
+        spaces[it]
+        p2[it]
+        spaces[it]
+        token("!")[it]
+        "Parsed successfully"
+    }
+
+    println(p.parse("Hello,World!".inp()).unwrap())
+    println(p.parse("Hello   , World  !".inp()).unwrap())
+    println(p.parse("Hello , world!".inp()).err())
 }

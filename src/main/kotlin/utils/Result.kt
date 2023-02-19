@@ -6,7 +6,16 @@ sealed class Result<T, E> {
     protected abstract fun error(): E?
 
     fun unwrap(): T {
-        return this.value()!!
+        if (this.isOk()) {
+            return this.value()!!
+        } else {
+            val err = this.err()!!
+            if (err is Throwable) {
+                throw err
+            } else {
+                throw UnwrapError(err)
+            }
+        }
     }
 
     fun err(): E {
@@ -64,5 +73,6 @@ class Err<T, E>(val e: E): Result<T, E>() {
     }
 }
 
+class UnwrapError(err: Any): Throwable()
 
 

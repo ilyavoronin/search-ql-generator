@@ -28,7 +28,7 @@ fun String.inp(): ParserInput {
     return ParserInput(this)
 }
 
-data class ParserError(val err: String, val pos: Int)
+data class ParserError(val err: String, val pos: Int): Throwable()
 
 fun <T> createErr(err: String, pos: Int): Result<T, ParserError> {
     return Err(ParserError(err, pos))
