@@ -43,6 +43,22 @@ private fun <T> parseWhile(parser: Parser<T>, input: ParserInput): Pair<List<T>,
     }
 }
 
+fun parseTokenWhile(pred: (Char) -> Boolean): Parser<String> {
+    return object : Parser<String> {
+        override fun parse(input: ParserInput): Result<String, ParserError> {
+            var res = ""
+            var i = 0;
+            while (pred(input.text[input.pos + i])) {
+                res += input.text
+                i++
+            }
+            input.forward(i);
+            return Ok(res)
+        }
+
+    }
+}
+
 fun <T> Parser<T>.atLeast(cnt: Int): Parser<List<T>> {
     return object : Parser<List<T>> {
         override fun parse(input: ParserInput): Result<List<T>, ParserError> {
@@ -68,6 +84,22 @@ class combine<T>(val f: combine<T>.(ParserInput) -> T): Parser<T> {
     operator fun <T> Parser<T>.get(input: ParserInput): T {
         return this.parse(input).panic()
     }
+    operator fun <T> Parser<T>.invoke(input: ParserInput): Result<T, ParserError> {
+        return this.parse(input)
+    }
+
+    fun <T> Parser<T>.b() = this.blank()
+
+    fun <T> Parser<T>.br() = this.blankReq()
+
+    fun <T> Parser<T>.nl() = this.newLine()
+
+    fun <T> Parser<T>.s() = this.spaces()
+
+    fun err(err: String, pos: Int) {
+        throw CombineException(ParserError(err, pos))
+    }
+
     override fun parse(input: ParserInput): Result<T, ParserError> {
         val initPos = input.pos
         return try {

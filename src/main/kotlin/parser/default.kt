@@ -18,10 +18,52 @@ fun token(token: String): Parser<String> {
     return TokenParser(token, "")
 }
 
-val spaces = TokenParser(" ", "").many()
-
 fun oneOf(tokens: List<String>): Parser<String> {
     return tokens.map { token(it) }.reduce { acc, parser -> acc.or(parser) }
 }
 
+fun <T> parseList(parser: Parser<T>, begin: String, end: String, sep: String) = combine {
+    val res = mutableListOf<T>()
+    token(begin).s()[it]
+    while (true) {
+        var e = parser.s()[it]
+        res.add(e)
+        if (token(sep)(it).isErr()) {
+            e = parser.s()[it]
+            res.add(e)
+            break
+        }
+    }
+    token(end)[it]
+    res.toList()
+}
+
 val blank = oneOf(listOf(" ", "\t", "\n", "\r\n"))
+
+val spaces = oneOf(listOf(" ", "\t")).many()
+
+fun <T> Parser<T>.blank() = combine {
+    val res = this@blank[it]
+    blank.many()[it]
+    res
+}
+fun <T> Parser<T>.blankReq() = combine {
+    val res = this@blankReq[it]
+    blank.atLeast(1)[it]
+    res
+}
+
+fun <T> Parser<T>.newLine() = combine {
+    val res = this@newLine[it]
+    val elems = blank.many()[it]
+    if (!elems.contains("\n") && !elems.contains("\r\n")) {
+        err("expected new line", it.pos)
+    }
+    res
+}
+
+fun <T> Parser<T>.spaces() = combine {
+    val res = this@spaces[it]
+    spaces[it]
+    res
+}

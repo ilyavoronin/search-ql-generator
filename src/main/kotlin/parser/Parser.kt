@@ -3,7 +3,7 @@ package parser
 import utils.Err
 import utils.Result
 
-interface Parser<T> {
+interface Parser<out T> {
     fun parse(input: ParserInput): Result<T, ParserError>
 }
 
@@ -21,6 +21,10 @@ data class ParserInput(val text: String) {
 
     fun forward(cnt: Int) {
         this.pos += cnt
+    }
+
+    fun get(i: Int): Char {
+        return text[pos + i]
     }
 }
 

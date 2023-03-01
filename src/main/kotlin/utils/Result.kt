@@ -1,6 +1,6 @@
 package utils
 
-sealed class Result<T, E> {
+sealed class Result<out T, E> {
     protected abstract fun value(): T?
 
     protected abstract fun error(): E?
@@ -18,6 +18,10 @@ sealed class Result<T, E> {
         }
     }
 
+    fun unwrapOrNull(): T? {
+        return this.value()
+    }
+
     fun err(): E {
         return this.error()!!
     }
@@ -30,13 +34,13 @@ sealed class Result<T, E> {
         return this.error() != null
     }
 
-    fun map(f: (T) -> T): Result<T, E> {
+    fun <S> map(f: (T) -> S): Result<S, E> {
         return when(this) {
             is Ok -> {
                 Ok(f(this.v!!))
             }
             is Err -> {
-                this
+                Err(this.e)
             }
         }
     }
