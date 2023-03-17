@@ -57,7 +57,7 @@ sealed class Result<out T, E> {
     }
 }
 
-class Ok<T, E>(val v: T): Result<T, E>() {
+data class Ok<T, E>(val v: T): Result<T, E>() {
     override fun value(): T? {
         return v
     }
@@ -67,7 +67,7 @@ class Ok<T, E>(val v: T): Result<T, E>() {
     }
 }
 
-class Err<T, E>(val e: E): Result<T, E>() {
+data class Err<T, E>(val e: E): Result<T, E>() {
     override fun value(): T? {
         return null
     }

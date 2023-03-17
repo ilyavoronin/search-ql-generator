@@ -48,8 +48,8 @@ fun parseTokenWhile(pred: (Char) -> Boolean): Parser<String> {
         override fun parse(input: ParserInput): Result<String, ParserError> {
             var res = ""
             var i = 0;
-            while (pred(input.text[input.pos + i])) {
-                res += input.text
+            while (input.pos + i < input.text.length && pred(input.text[input.pos + i])) {
+                res += input.get(i)
                 i++
             }
             input.forward(i);

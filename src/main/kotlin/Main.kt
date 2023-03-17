@@ -1,4 +1,7 @@
+import generator.parser.astParser
 import parser.*
+import java.io.BufferedReader
+import java.io.File
 
 fun main() {
     val p1 = TokenParser("Hello", "")
@@ -23,4 +26,9 @@ fun main() {
     println(p.parse("Hello,World!".inp()).unwrap())
     println(p.parse("Hello   , World  !".inp()).unwrap())
     println(p.parse("Hello , world!".inp()).err())
+
+    val bufferedReader: BufferedReader = File("teamcity.gs").bufferedReader()
+    val inputString = bufferedReader.use { it.readText() }
+    val res = astParser.parse(inputString.inp())
+    println(res)
 }

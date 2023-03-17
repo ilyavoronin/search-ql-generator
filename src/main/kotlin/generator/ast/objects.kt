@@ -1,12 +1,17 @@
 package generator.ast
 
-sealed class Definition(open val name: String)
+sealed class AST
+
+sealed class Definition(open val name: String): AST()
+
+data class Modifier(val name: String): AST()
 
 data class Object(
     override val name: String,
     val inheritedFrom: String?,
     val members: List<DefField>,
-    val shortCut: ShortCut,
+    val shortCut: ShortCut?,
+    val source: Boolean
 ): Definition(name)
 
 data class Interface(
@@ -19,12 +24,13 @@ data class Filter(
     override val name: String,
     val inheritedFrom: String?,
     val members: List<DefField>,
-    val shortCut: ShortCut,
+    val shortCut: ShortCut?,
 ): Definition(name)
 
 data class DefField(
     val memName: String,
     val memType: String,
+    val params: List<String>,
     val modifiers: List<String>,
 )
 
