@@ -89,13 +89,29 @@ private val fieldParser = combine {
     token(":").s()[it]
     val type = parseVar.s()[it]
     val params = parseList(parseVar, "[", "]", ",")(it)
+    var isRev = false
+    var isMany = false
+    var isSource = false
+
+    params.unwrapOrNull()?.forEach {par ->
+        when  {
+            par == "many" -> isMany = true
+            par == "rev" -> isRev = true
+            par == "source" -> isSource = true
+            else -> err("unknown field param $it", it.pos)
+        }
+    }
+
     spaces[it]
     val mods = parseList(parseVar, "(", ")", ",")(it)
     newLine[it]
+
     DefField(
         name,
         type,
-        params.unwrapOrNull() ?: listOf(),
-        mods.unwrapOrNull() ?: listOf()
+        mods.unwrapOrNull() ?: listOf(),
+        isMany,
+        isSource,
+        isRev,
     )
 }

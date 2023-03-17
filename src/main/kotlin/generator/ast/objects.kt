@@ -30,8 +30,11 @@ data class Filter(
 data class DefField(
     val memName: String,
     val memType: String,
-    val params: List<String>,
     val modifiers: List<String>,
+    //params:
+    val isMany: Boolean,
+    val isSource: Boolean,
+    val isRev: Boolean
 )
 
 data class ShortCut(val parsingTemplate: String)

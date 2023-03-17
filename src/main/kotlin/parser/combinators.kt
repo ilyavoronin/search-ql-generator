@@ -96,7 +96,7 @@ class combine<T>(val f: combine<T>.(ParserInput) -> T): Parser<T> {
 
     fun <T> Parser<T>.s() = this.spaces()
 
-    fun err(err: String, pos: Int) {
+    fun err(err: String, pos: Int): Nothing {
         throw CombineException(ParserError(err, pos))
     }
 
