@@ -4,6 +4,8 @@ sealed class AST
 
 sealed class Definition(open val name: String): AST()
 
+sealed class Accessible(name: String): Definition(name)
+
 data class Modifier(val name: String): AST()
 
 data class Object(
@@ -12,7 +14,7 @@ data class Object(
     val members: List<DefField>,
     val shortCut: ShortCut?,
     val source: Boolean
-): Definition(name)
+): Accessible(name)
 
 data class Interface(
     override val name: String,
@@ -25,7 +27,7 @@ data class Filter(
     val inheritedFrom: String?,
     val members: List<DefField>,
     val shortCut: ShortCut?,
-): Definition(name)
+): Accessible(name)
 
 data class DefField(
     val memName: String,
