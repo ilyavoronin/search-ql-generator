@@ -3,10 +3,10 @@ package generator
 import generator.ast.*
 
 class GeneratorScheme(astList: List<AST>) {
-    private val interfaces: List<Interface>
-    private val filters: List<Filter>
-    private val objects: List<Object>
-    private val modifiers: List<Modifier>
+    val interfaces: List<Interface>
+    val filters: List<Filter>
+    val objects: List<Object>
+    val modifiers: List<Modifier>
 
     private val interfaceMap: HashMap<String, Interface> = HashMap()
     private val modifierMap: HashMap<String, Modifier> = HashMap()
