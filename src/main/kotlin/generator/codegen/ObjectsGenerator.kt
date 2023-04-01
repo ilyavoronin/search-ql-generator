@@ -16,9 +16,9 @@ class ObjectsGenerator {
 
         val builtIns = this.genBuiltIns()
         val modifiers = this.genModifiers(scheme.modifiers)
-        val interfaces = this.genObjects(scheme.interfaces)
-        val objects = this.genObjects(scheme.objects)
-        val filters = this.genObjects(scheme.filters)
+        val interfaces = this.genObjects(scheme.interfaces, builtIns)
+        val objects = this.genObjects(scheme.objects, builtIns)
+        val filters = this.genObjects(scheme.filters, builtIns)
 
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
         for (b in builtIns.values) {
@@ -87,22 +87,31 @@ class ObjectsGenerator {
         return res
     }
 
-    private fun genObjects(filterSpecs: List<Definition>): Map<String, TypeSpec> {
+    private fun genObjects(filterSpecs: List<Definition>, builtInSPecs: Map<String, TypeSpec>): Map<String, TypeSpec> {
         val res = mutableMapOf<String, TypeSpec>()
+        val paramBuiltIns = mapOf(
+            Pair("bool", "Boolean"),
+            Pair("string", "String"),
+            Pair("int", "Int")
+        )
 
         for (objSpec in filterSpecs) {
             val int = TypeSpec.interfaceBuilder(objSpec.name)
-            objSpec.inheritedFrom?.let {int.addSuperinterface(TypeVariableName.invoke(it)) }
+            objSpec.inheritedFrom?.let {
+                int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[it]?.name ?: it))
+            }
             for (fieldSpec in objSpec.members) {
                 val f =  FunSpec
                     .builder("get${fieldSpec.memName.cap()}")
                     .addModifiers(KModifier.ABSTRACT)
+
+                val type = TypeVariableName.invoke(paramBuiltIns[fieldSpec.memType] ?: fieldSpec.memType)
                 if (fieldSpec.isMany) {
                     val listName = ClassName("kotlin.collections", "List")
-                    val parametrized = listName.parameterizedBy(TypeVariableName.invoke(fieldSpec.memType))
+                    val parametrized = listName.parameterizedBy(type)
                     f.returns(parametrized)
                 } else {
-                    f.returns(TypeVariableName.invoke(fieldSpec.memType))
+                    f.returns(type)
                 }
 
                 for (modifierSpec in fieldSpec.modifiers) {
