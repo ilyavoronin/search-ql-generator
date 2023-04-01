@@ -16,9 +16,9 @@ class ObjectsGenerator {
 
         val builtIns = this.genBuiltIns()
         val modifiers = this.genModifiers(scheme.modifiers)
-        val interfaces = this.genInterfaces(scheme.interfaces)
+        val interfaces = this.genObjects(scheme.interfaces)
         val objects = this.genObjects(scheme.objects)
-        val filters = this.genFilters(scheme.filters)
+        val filters = this.genObjects(scheme.filters)
 
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
         for (b in builtIns.values) {
@@ -87,13 +87,13 @@ class ObjectsGenerator {
         return res
     }
 
-    private fun genObjects(filterSpecs: List<Object>): Map<String, TypeSpec> {
+    private fun genObjects(filterSpecs: List<Definition>): Map<String, TypeSpec> {
         val res = mutableMapOf<String, TypeSpec>()
 
-        for (intSpec in filterSpecs) {
-            val int = TypeSpec.interfaceBuilder(intSpec.name)
-            intSpec.inheritedFrom?.let {int.addSuperinterface(TypeVariableName.invoke(it)) }
-            for (fieldSpec in intSpec.members) {
+        for (objSpec in filterSpecs) {
+            val int = TypeSpec.interfaceBuilder(objSpec.name)
+            objSpec.inheritedFrom?.let {int.addSuperinterface(TypeVariableName.invoke(it)) }
+            for (fieldSpec in objSpec.members) {
                 val f =  FunSpec
                     .builder("get${fieldSpec.memName.cap()}")
                     .addModifiers(KModifier.ABSTRACT)
@@ -111,72 +111,10 @@ class ObjectsGenerator {
                 }
                 int.addFunction(f.build())
             }
-            res[intSpec.name] = int.build()
+            res[objSpec.name] = int.build()
         }
 
         return res;
-    }
-
-    private fun genFilters(filterSpecs: List<Filter>): Map<String, TypeSpec> {
-        val res = mutableMapOf<String, TypeSpec>()
-
-        for (intSpec in filterSpecs) {
-            val int = TypeSpec.interfaceBuilder(intSpec.name)
-            intSpec.inheritedFrom?.let {int.addSuperinterface(TypeVariableName.invoke(it)) }
-            for (fieldSpec in intSpec.members) {
-                val f =  FunSpec
-                    .builder("get${fieldSpec.memName.cap()}")
-                    .addModifiers(KModifier.ABSTRACT)
-
-                if (fieldSpec.isMany) {
-                    val listName = ClassName("kotlin.collections", "List")
-                    val parametrized = listName.parameterizedBy(TypeVariableName.invoke(fieldSpec.memType))
-                    f.returns(parametrized)
-                } else {
-                    f.returns(TypeVariableName.invoke(fieldSpec.memType))
-                }
-
-                for (modifierSpec in fieldSpec.modifiers) {
-                    val param = ParameterSpec.builder(modifierSpec.lowercase(), TypeVariableName.invoke(modifierSpec.cap() + "Mod"))
-                    f.addParameter(param.build())
-                }
-                int.addFunction(f.build())
-            }
-            res[intSpec.name] = int.build()
-        }
-
-        return res;
-    }
-
-    private fun genInterfaces(interfaceSpecs: List<Interface>): Map<String, TypeSpec> {
-        val res = mutableMapOf<String, TypeSpec>()
-
-        for (intSpec in interfaceSpecs) {
-            val int = TypeSpec.interfaceBuilder(intSpec.name)
-            intSpec.inheritedFrom?.let {int.addSuperinterface(TypeVariableName.invoke(it)) }
-            for (fieldSpec in intSpec.members) {
-                val f =  FunSpec
-                    .builder("get${fieldSpec.memName.cap()}")
-                    .addModifiers(KModifier.ABSTRACT)
-
-                if (fieldSpec.isMany) {
-                    val listName = ClassName("kotlin.collections", "List")
-                    val parametrized = listName.parameterizedBy(TypeVariableName.invoke(fieldSpec.memType))
-                    f.returns(parametrized)
-                } else {
-                    f.returns(TypeVariableName.invoke(fieldSpec.memType))
-                }
-
-                for (modifierSpec in fieldSpec.modifiers) {
-                    val param = ParameterSpec.builder(modifierSpec.lowercase(), TypeVariableName.invoke(modifierSpec.cap() + "Mod"))
-                    f.addParameter(param.build())
-                }
-                int.addFunction(f.build())
-            }
-            res[intSpec.name] = int.build()
-        }
-
-        return res
     }
 
     private fun String.cap() = this.replaceFirstChar {
