@@ -7,18 +7,23 @@ import generator.ast.*
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
-import kotlin.collections.ArrayList
 
 class ObjectsGenerator {
     fun genCode(path: String, pack: String, scheme: GeneratorScheme) {
         if (!Files.exists(Paths.get(path))) {
             Files.createDirectory(Paths.get(path))
         }
+
+        val builtIns = this.genBuiltIns()
         val modifiers = this.genModifiers(scheme.modifiers)
         val interfaces = this.genInterfaces(scheme.interfaces)
         val objects = this.genObjects(scheme.objects)
         val filters = this.genFilters(scheme.filters)
 
+        val fileBuiltIns = FileSpec.builder(pack, "builtins")
+        for (b in builtIns.values) {
+            fileBuiltIns.addType(b)
+        }
         val fileInt = FileSpec.builder(pack, "interfaces")
         for (int in interfaces.values) {
             fileInt.addType(int)
@@ -36,10 +41,40 @@ class ObjectsGenerator {
             fileObjects.addType(obj)
         }
 
+        fileBuiltIns.build().writeTo(Paths.get(path))
         fileInt.build().writeTo(Paths.get(path))
         fileMods.build().writeTo(Paths.get(path))
         fileFilters.build().writeTo(Paths.get(path))
         fileObjects.build().writeTo(Paths.get(path))
+    }
+
+    private fun genBuiltIns(): Map<String, TypeSpec> {
+        val res = mutableMapOf<String, TypeSpec>()
+        run {
+            val b = TypeSpec.interfaceBuilder("BoolBuiltIn")
+            val f = FunSpec.builder("getBool")
+                .addModifiers(KModifier.ABSTRACT)
+                .returns(Boolean::class.java)
+            b.addFunction(f.build())
+            res["bool"] = b.build()
+        }
+        run {
+            val b = TypeSpec.interfaceBuilder("StringBuiltIn")
+            val f = FunSpec.builder("getString")
+                .addModifiers(KModifier.ABSTRACT)
+                .returns(String::class.java)
+            b.addFunction(f.build())
+            res["string"] = b.build()
+        }
+        run {
+            val b = TypeSpec.interfaceBuilder("IntBuiltIn")
+            val f = FunSpec.builder("getInt")
+                .addModifiers(KModifier.ABSTRACT)
+                .returns(Int::class.java)
+            b.addFunction(f.build())
+            res["int"] = b.build()
+        }
+        return res
     }
 
     private fun genModifiers(modifierSpecs: List<Modifier>): Map<String, TypeSpec> {
@@ -68,7 +103,6 @@ class ObjectsGenerator {
                     f.returns(parametrized)
                 } else {
                     f.returns(TypeVariableName.invoke(fieldSpec.memType))
-
                 }
 
                 for (modifierSpec in fieldSpec.modifiers) {
