@@ -44,12 +44,12 @@ filter SnapshotDependency {
 }
 
 source object Template {
-	inheritedBy: Conf [rev, many]
+	inheritedBy: BuildConf [rev, many]
 	id: Id [source]
 	name: Name [source]
 	trigger: Trigger [many]
 	step: Step [many]
-	param: param [many] (resolved)
+	param: Param [many] (resolved)
 	dep: Dependency [many]
 	vcs_entry: VcsRootEntry [many]
 	feature: Feature [many]

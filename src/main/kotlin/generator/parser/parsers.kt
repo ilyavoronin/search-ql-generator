@@ -54,8 +54,30 @@ private val modifierParser: Parser<Modifier> = combine {
     blank.many()[it]
     token("modifier").br()[it]
     val name = parseVar.b()[it]
+    token(":").b()[it]
+    val type = parseVar.b()[it]
+    token("(").b()[it]
+    val typeAndDefaultValue = when(type) {
+        "bool" -> {
+            ModValueType.Bool(token("true").or(token("false"))[it].toBoolean())
+        }
+        "string" -> {
+            token("\"")[it]
+            val str = parseTokenWhile { it != '"' }[it]
+            token("\"")[it]
+            ModValueType.String(str)
+        }
+        "int" -> {
+            val resStr = parseTokenWhile { it.isDigit() }[it]
+            ModValueType.Int(resStr.toInt())
+        }
 
-    Modifier(name)
+        else -> {err("Unexpected type $type", it.pos)}
+    }
+    blank.many()[it]
+    token(")").b()[it]
+
+    Modifier(name, typeAndDefaultValue)
 }
 
 val astParser: Parser<List<AST>> = (modifierParser.or(defParser)).many().end()

@@ -12,7 +12,13 @@ sealed class Accessible: Definition() {
     abstract val shortCut: ShortCut?
 }
 
-data class Modifier(val name: String): AST()
+
+sealed class ModValueType(val typeStr: kotlin.String) {
+    class Bool(v: Boolean): ModValueType("kotlin.Boolean")
+    class Int(v: kotlin.Int): ModValueType("kotlin.Int")
+    class String(v: kotlin.String): ModValueType("kotlin.String")
+}
+data class Modifier(val name: String, val type: ModValueType): AST()
 
 data class Object(
     override val name: String,

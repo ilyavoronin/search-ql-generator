@@ -14,11 +14,15 @@ class ObjectsGenerator {
             Files.createDirectory(Paths.get(path))
         }
 
+        val modsMap = mutableMapOf<String, Modifier>()
+        for (mod in scheme.modifiers) {
+            modsMap[mod.name] = mod
+        }
+
         val builtIns = this.genBuiltIns()
-        val modifiers = this.genModifiers(scheme.modifiers)
-        val interfaces = this.genObjects(scheme.interfaces, builtIns)
-        val objects = this.genObjects(scheme.objects, builtIns)
-        val filters = this.genObjects(scheme.filters, builtIns)
+        val interfaces = this.genObjects(scheme.interfaces, modsMap, builtIns)
+        val objects = this.genObjects(scheme.objects, modsMap, builtIns)
+        val filters = this.genObjects(scheme.filters, modsMap, builtIns)
 
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
         for (b in builtIns.values) {
@@ -28,10 +32,7 @@ class ObjectsGenerator {
         for (int in interfaces.values) {
             fileInt.addType(int)
         }
-        val fileMods = FileSpec.builder(pack, "modifiers")
-        for (mod in modifiers.values) {
-            fileMods.addType(mod)
-        }
+
         val fileFilters = FileSpec.builder(pack, "filters")
         for (filt in filters.values) {
             fileFilters.addType(filt)
@@ -43,7 +44,6 @@ class ObjectsGenerator {
 
         fileBuiltIns.build().writeTo(Paths.get(path))
         fileInt.build().writeTo(Paths.get(path))
-        fileMods.build().writeTo(Paths.get(path))
         fileFilters.build().writeTo(Paths.get(path))
         fileObjects.build().writeTo(Paths.get(path))
     }
@@ -54,7 +54,7 @@ class ObjectsGenerator {
             val b = TypeSpec.interfaceBuilder("BoolBuiltIn")
             val f = FunSpec.builder("getBool")
                 .addModifiers(KModifier.ABSTRACT)
-                .returns(Boolean::class.java)
+                .returns(Boolean::class)
             b.addFunction(f.build())
             res["bool"] = b.build()
         }
@@ -62,7 +62,7 @@ class ObjectsGenerator {
             val b = TypeSpec.interfaceBuilder("StringBuiltIn")
             val f = FunSpec.builder("getString")
                 .addModifiers(KModifier.ABSTRACT)
-                .returns(String::class.java)
+                .returns(String::class)
             b.addFunction(f.build())
             res["string"] = b.build()
         }
@@ -70,24 +70,14 @@ class ObjectsGenerator {
             val b = TypeSpec.interfaceBuilder("IntBuiltIn")
             val f = FunSpec.builder("getInt")
                 .addModifiers(KModifier.ABSTRACT)
-                .returns(Int::class.java)
+                .returns(Int::class)
             b.addFunction(f.build())
             res["int"] = b.build()
         }
         return res
     }
 
-    private fun genModifiers(modifierSpecs: List<Modifier>): Map<String, TypeSpec> {
-        val res = mutableMapOf<String, TypeSpec>()
-        for (modSpec in modifierSpecs) {
-            val mod = TypeSpec.interfaceBuilder(modSpec.name.cap() + "Mod")
-            res[modSpec.name] = mod.build()
-        }
-
-        return res
-    }
-
-    private fun genObjects(filterSpecs: List<Definition>, builtInSPecs: Map<String, TypeSpec>): Map<String, TypeSpec> {
+    private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>): Map<String, TypeSpec> {
         val res = mutableMapOf<String, TypeSpec>()
         val paramBuiltIns = mapOf(
             Pair("bool", "Boolean"),
@@ -115,7 +105,8 @@ class ObjectsGenerator {
                 }
 
                 for (modifierSpec in fieldSpec.modifiers) {
-                    val param = ParameterSpec.builder(modifierSpec.lowercase(), TypeVariableName.invoke(modifierSpec.cap() + "Mod"))
+                    val modDescription = mods[modifierSpec]!!
+                    val param = ParameterSpec.builder(modifierSpec, TypeVariableName.invoke(modDescription.type.typeStr))
                     f.addParameter(param.build())
                 }
                 int.addFunction(f.build())
