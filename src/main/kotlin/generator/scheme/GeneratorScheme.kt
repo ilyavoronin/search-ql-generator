@@ -1,6 +1,7 @@
-package generator
+package generator.scheme
 
 import generator.ast.*
+import generator.scheme.ast.*
 
 class GeneratorScheme(astList: List<AST>) {
     val interfaces: List<Interface>

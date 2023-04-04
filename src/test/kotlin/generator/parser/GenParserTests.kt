@@ -1,9 +1,10 @@
 package generator.parser
 
-import generator.ast.DefField
-import generator.ast.Filter
-import generator.ast.Object
-import generator.ast.ShortCut
+import generator.scheme.ast.DefField
+import generator.scheme.ast.Filter
+import generator.scheme.ast.Object
+import generator.scheme.ast.ShortCut
+import generator.scheme.parser.astParser
 import parser.inp
 import utils.getResourceAsText
 import kotlin.test.Test

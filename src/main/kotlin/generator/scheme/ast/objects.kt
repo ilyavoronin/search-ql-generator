@@ -1,4 +1,4 @@
-package generator.ast
+package generator.scheme.ast
 
 sealed class AST
 

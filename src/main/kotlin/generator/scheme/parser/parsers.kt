@@ -1,6 +1,7 @@
-package generator.parser
+package generator.scheme.parser
 
 import generator.ast.*
+import generator.scheme.ast.*
 import parser.*
 
 private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_') }

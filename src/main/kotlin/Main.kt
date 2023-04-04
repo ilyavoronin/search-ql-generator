@@ -1,6 +1,6 @@
-import generator.GeneratorScheme
-import generator.codegen.ObjectsGenerator
-import generator.parser.astParser
+import generator.scheme.GeneratorScheme
+import generator.scheme.codegen.ObjectsGenerator
+import generator.scheme.parser.astParser
 import parser.*
 import java.io.File
 

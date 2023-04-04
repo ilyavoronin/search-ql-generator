@@ -1,9 +1,10 @@
-package generator.codegen
+package generator.scheme.codegen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import generator.GeneratorScheme
-import generator.ast.*
+import generator.scheme.GeneratorScheme
+import generator.scheme.ast.Definition
+import generator.scheme.ast.Modifier
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
