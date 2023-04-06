@@ -20,6 +20,10 @@ fun <T> Parser<T>.or(other: Parser<T>): Parser<T> {
     }
 }
 
+operator fun <T> Parser<T>.div(other: Parser<T>): Parser<T> {
+    return this.or(other)
+}
+
 fun <T, S> Parser<T>.map(f: (T) -> S): Parser<S> {
     return object : Parser<S> {
         override fun parse(input: ParserInput): Result<S, ParserError> {
