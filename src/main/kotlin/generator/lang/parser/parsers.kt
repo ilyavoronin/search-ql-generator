@@ -7,10 +7,6 @@ import parser.*
 private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_') }
 
 fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {
-    val searchObject = combine {
-
-    }
-
     val objCondParser = getLowLevelParser()
     val objPathParser = getUpperLevelParser(objCondParser)
     val findQuery = combine {
@@ -53,9 +49,13 @@ private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Pars
     } /
     combine {
         val subObjType = parseVar.b()[it]
-        token("(").b()[it]
-        val subObjCond = condParser(it).unwrapOrNull()
-        token(")").b()[it]
+        val subObjCond = combine {
+            token("(").b()[it]
+            val subObjCond = condParser[it]
+            token(")").b()[it]
+            subObjCond
+        }(it).unwrapOrNull()
+
         val subGraphCond = combine {
             token("->").b()[it]
             token("{").b()[it]
@@ -64,10 +64,10 @@ private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Pars
             subGraph
         }(it).unwrapOrNull()
         val additionalSobjCond = combine {
-            token(".").b()
-            token("{").b()
+            token(".").b()[it]
+            token("{").b()[it]
             val res = condParser[it]
-            token("}").b()
+            token("}").b()[it]
             res
         }(it).unwrapOrNull()
         SubObjPath(subObjType, subObjCond, subGraphCond, additionalSobjCond)
@@ -124,6 +124,23 @@ private fun getSubExpParser(topParser: Parser<ObjCondition>): Parser<ObjConditio
         val subObjCond = topParser[it]
         token(")").b()[it]
         SubObjSearch(subObjType, subObjCond)
+    } /
+    combine {
+        val num = parseTokenWhile { it.isDigit() }[it]
+        if (num.isEmpty()) {
+            err("empty num", it.pos)
+        }
+        blank.many()[it]
+        IntObjectCond(num.toInt())
+    } /
+    combine {
+        token("\"")[it]
+        val str = parseTokenWhile { it != '"' }[it]
+        token("\"")[it]
+        StringObjCond(str)
+    } /
+    combine {
+        EmptyObjCond()
     }
 
     return objCond

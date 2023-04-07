@@ -14,6 +14,12 @@ data class OrObjCond(val l: ObjCondition, val r: ObjCondition) : ObjCondition
 
 data class NotObjCond(val o: ObjCondition) : ObjCondition
 
+data class StringObjCond(val s: String) : ObjCondition
+
+data class IntObjectCond(val i: Int) : ObjCondition
+
+data class EmptyObjCond(private val unit: Unit = Unit): ObjCondition
+
 
 data class SubObjPath(
     val objType: String,
