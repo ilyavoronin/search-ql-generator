@@ -33,7 +33,7 @@ fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {
         res
     }
 
-    return findQuery
+    return findQuery.end()
 }
 
 private fun combine<*>.validateFindQuery(fquery: FindQuery) {
@@ -83,7 +83,7 @@ private fun getUpperLevelParser(objCondParser: Parser<ObjCondition>): Parser<Pat
     val orExps = mutableListOf<PathCondition>()
 
     while (true) {
-        val op = (token("and") / token("or"))(it)
+        val op = (token("and").br() / token("or").br())(it)
         if (op.isOk()) {
             val rExp = subGraph[it]
 
@@ -153,7 +153,7 @@ private fun getLowLevelParser(): Parser<ObjCondition> = combine {
     val orExps = mutableListOf<ObjCondition>()
 
     while (true) {
-        val op = (token("and") / token("or"))(it)
+        val op = (token("and").br() / token("or").br())(it)
         if (op.isOk()) {
             val rExp = objCond[it]
 
