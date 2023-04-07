@@ -8,22 +8,21 @@ private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_
 
 fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {
     val searchObject = combine {
-        val objParser = token("?")
-        for (objDef in scheme.objects) {
-            objParser.or(token(objDef.name.toLowerCase()))
-        }
-        objParser.b()[it]
+
     }
+
+    val objCondParser = getLowLevelParser()
+    val objPathParser = getUpperLevelParser(objCondParser)
     val findQuery = combine {
         token("find").b()[it]
-        val sobj = searchObject.b()[it]
+        val sobj = parseVar.br()[it]
         val inPart = if (token("in").b()(it).isOk()) {
-            getLevelParser(true, false)[it]
+            objPathParser[it]
         } else {
             null
         }
         val withPart = if (token("with").b()(it).isOk()) {
-            getLevelParser(false, true)[it]
+            objCondParser[it]
         } else {
             null
         }
@@ -45,7 +44,70 @@ private fun combine<*>.validateFindQuery(fquery: FindQuery) {
     // TODO
 }
 
-private fun getSubExpParser(topParser: Parser<ObjCondition>, allowSearchObjSpec: Boolean): Parser<ObjCondition> {
+private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Parser<ObjCondition>): Parser<PathCondition> {
+    val objCond = combine {
+        token("(").b()[it]
+        val objCond = topParser[it]
+        token(")").b()[it]
+        objCond
+    } /
+    combine {
+        val subObjType = parseVar.b()[it]
+        token("(").b()[it]
+        val subObjCond = condParser(it).unwrapOrNull()
+        token(")").b()[it]
+        val subGraphCond = combine {
+            token("->").b()[it]
+            token("{").b()[it]
+            val subGraph = topParser[it]
+            token("}").b()[it]
+            subGraph
+        }(it).unwrapOrNull()
+        val additionalSobjCond = combine {
+            token(".").b()
+            token("{").b()
+            val res = condParser[it]
+            token("}").b()
+            res
+        }(it).unwrapOrNull()
+        SubObjPath(subObjType, subObjCond, subGraphCond, additionalSobjCond)
+    }
+
+    return objCond
+}
+
+private fun getUpperLevelParser(objCondParser: Parser<ObjCondition>): Parser<PathCondition> = combine {
+    val subGraph = getSubGraphParser(this, objCondParser)
+
+    var andExp: PathCondition = subGraph[it]
+    val orExps = mutableListOf<PathCondition>()
+
+    while (true) {
+        val op = (token("and") / token("or"))(it)
+        if (op.isOk()) {
+            val rExp = subGraph[it]
+
+            when (op.unwrap()) {
+                "and" -> {
+                    andExp = AndObjPath(andExp, rExp)
+                }
+
+                "or" -> {
+                    orExps.add(andExp)
+                    andExp = rExp
+                }
+            }
+        } else {
+            orExps.add(andExp)
+            break
+        }
+    }
+    orExps.reduce { acc, objCond1 ->
+        OrObjPath(acc, objCond1)
+    }
+}
+
+private fun getSubExpParser(topParser: Parser<ObjCondition>): Parser<ObjCondition> {
     val objCond = combine {
         token("(").b()[it]
         val objCond = topParser[it]
@@ -61,49 +123,39 @@ private fun getSubExpParser(topParser: Parser<ObjCondition>, allowSearchObjSpec:
         token("(").b()[it]
         val subObjCond = topParser[it]
         token(")").b()[it]
-        val sobjType = if (allowSearchObjSpec) {combine {
-            token("|").b()[it]
-            parseVar[it]
-        }.b()(it).unwrapOrNull() } else {
-            null
-        }
-        SubObjSearch(subObjType, subObjCond, sobjType)
+        SubObjSearch(subObjType, subObjCond)
     }
 
     return objCond
 }
 
-private fun getLevelParser(allowSearchObjSpec: Boolean, allowConditional: Boolean): Parser<ObjCondition> = combine {
+private fun getLowLevelParser(): Parser<ObjCondition> = combine {
 
-    val objCond = getSubExpParser(getLevelParser(allowSearchObjSpec, true), allowSearchObjSpec)
+    val objCond = getSubExpParser(this)
     var andExp: ObjCondition = objCond[it]
     val orExps = mutableListOf<ObjCondition>()
 
-    if (allowConditional) {
-        while (true) {
-            val op = (token("and") / token("or"))(it)
-            if (op.isOk()) {
-                val rExp = objCond[it]
+    while (true) {
+        val op = (token("and") / token("or"))(it)
+        if (op.isOk()) {
+            val rExp = objCond[it]
 
-                when (op.unwrap()) {
-                    "and" -> {
-                        andExp = AndObjCond(andExp, rExp)
-                    }
-
-                    "or" -> {
-                        orExps.add(andExp)
-                        andExp = rExp
-                    }
+            when (op.unwrap()) {
+                "and" -> {
+                    andExp = AndObjCond(andExp, rExp)
                 }
-            } else {
-                orExps.add(andExp)
-                break
+
+                "or" -> {
+                    orExps.add(andExp)
+                    andExp = rExp
+                }
             }
+        } else {
+            orExps.add(andExp)
+            break
         }
-        orExps.reduce { acc, objCond1 ->
-            OrObjCond(acc, objCond1)
-        }
-    } else {
-        objCond[it]
+    }
+    orExps.reduce { acc, objCond1 ->
+        OrObjCond(acc, objCond1)
     }
 }
