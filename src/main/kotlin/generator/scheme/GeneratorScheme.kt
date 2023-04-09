@@ -1,6 +1,7 @@
 package generator.scheme
 
 import generator.scheme.ast.*
+import java.lang.RuntimeException
 
 class GeneratorScheme(astList: List<AST>) {
     val interfaces: List<Interface>
@@ -8,10 +9,11 @@ class GeneratorScheme(astList: List<AST>) {
     val objects: List<Object>
     val modifiers: List<Modifier>
 
-    private val objectTree: MutableMap<String, List<Definition>> = mutableMapOf()
+    private val objectTree: MutableMap<String, MutableList<Definition>> = mutableMapOf()
     private val parentObjectTree: MutableMap<String, MutableList<Definition>> = mutableMapOf()
     private val interfaceMap: HashMap<String, Interface> = HashMap()
     private val modifierMap: HashMap<String, Modifier> = HashMap()
+    private val defs: HashMap<String, Definition> = HashMap()
     private val objsMap: HashMap<String, Accessible> = HashMap()
     init {
         val ints = mutableListOf<Interface>()
@@ -19,7 +21,9 @@ class GeneratorScheme(astList: List<AST>) {
         val fs = mutableListOf<Filter>()
         val mods = mutableListOf<Modifier>()
 
-        val defs = mutableMapOf<String, Definition>()
+        defs["string"] = Filter("string", null, listOf(), null)
+        defs["bool"] = Filter("bool", null, listOf(), null)
+        defs["int"] = Filter("int", null, listOf(), null)
 
         for (ast in astList) {
             when (ast) {
@@ -47,17 +51,33 @@ class GeneratorScheme(astList: List<AST>) {
                 else -> {}
             }
         }
+
+        val interfaceObjectMap = mutableMapOf<String, List<Definition>>()
         for (ast in astList) {
             when (ast) {
-                is Definition -> {
-                    objectTree[ast.name] = ast.members.mapNotNull {
-                        if (it.memType in listOf("string", "int", "bool")) {
-                            null
-                        } else {
-                            parentObjectTree.computeIfAbsent(it.memType) { mutableListOf() }.add(ast)
-                            defs[it.memType]!!
-                        }
+                is Accessible -> {
+                    objectTree[ast.name] = ast.members.map {
+                        defs[it.memType]!!
+                    }.toMutableList()
+                }
+                is Interface -> {
+                    interfaceObjectMap[ast.name] = ast.members.map {
+                        defs[it.memType]!!
                     }.toList()
+                }
+                else -> {}
+            }
+        }
+
+        for (ast in astList) {
+            when (ast) {
+                is Accessible -> {
+                    if (ast.inheritedFrom != null && ast.inheritedFrom !in listOf("string", "bool", "int")) {
+                        objectTree[ast.name]!!.addAll(interfaceObjectMap[ast.inheritedFrom] ?: throw RuntimeException(ast.inheritedFrom))
+                    }
+                    for (subObj in objectTree[ast.name]!!) {
+                        parentObjectTree.computeIfAbsent(subObj.name) { mutableListOf() }.add(ast)
+                    }
                 }
                 else -> {}
             }
@@ -79,5 +99,48 @@ class GeneratorScheme(astList: List<AST>) {
 
     fun getModifier(name: String): Modifier? {
         return modifierMap[name]
+    }
+
+    fun getDefinition(name: String): Definition? {
+        return defs[name]
+    }
+
+    fun getSubObj(obj: Definition, defName: String): Definition? {
+        val members = if (obj.inheritedFrom == null) {
+            obj.members
+        } else {
+            obj.members + getDefinition(obj.inheritedFrom!!)!!.members
+        }
+        for (m in members) {
+            if (m.memName == defName) {
+                return getDefinition(m.memType)
+            }
+        }
+        return null
+    }
+
+    fun checkHasAncestor(obj: Definition, sobj: Definition): Boolean {
+        val used = mutableSetOf<String>()
+        return checkHasAncestorRec(obj.name, sobj.name, used)
+    }
+
+    private fun checkHasAncestorRec(obj: String, sobj: String, used: MutableSet<String>): Boolean {
+        if (used.contains(obj)) {
+            return false
+        }
+        if (obj == sobj) {
+            return true
+        }
+        used.add(obj)
+        if (!objectTree.containsKey(obj)) {
+            return false
+        }
+        for (subObj in objectTree[obj]!!) {
+            val res = checkHasAncestorRec(subObj.name, sobj, used)
+            if (res) {
+                return true
+            }
+        }
+        return false
     }
 }

@@ -1,6 +1,5 @@
 package generator.scheme.parser
 
-import generator.ast.*
 import generator.scheme.ast.*
 import parser.*
 

@@ -2,6 +2,8 @@ package generator.lang.parser
 
 import generator.lang.ast.*
 import generator.scheme.GeneratorScheme
+import generator.scheme.ast.Definition
+import generator.scheme.ast.Filter
 import parser.*
 
 private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_') }
@@ -28,7 +30,7 @@ fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {
         }
 
         val res = FindQuery(sobj, inPart, withPart)
-        validateFindQuery(res)
+        validateFindQuery(res, scheme)
 
         res
     }
@@ -36,8 +38,93 @@ fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {
     return findQuery.end()
 }
 
-private fun combine<*>.validateFindQuery(fquery: FindQuery) {
-    // TODO
+private fun combine<*>.validateFindQuery(fquery: FindQuery, scheme: GeneratorScheme) {
+    val sobj = scheme.getDefinition(fquery.sobject.capitalize()) ?: err("object type ${fquery.sobject.capitalize()} does not exist", 0)
+    when (sobj) {
+        is Filter -> {
+            err("can't search ${sobj.name}, not an object", 0)
+        }
+        else -> {}
+    }
+    if (fquery.inCond != null) {
+        validatePathCond(null,
+            sobj,
+            fquery.inCond,
+            scheme
+        )
+    }
+    if (fquery.withCond != null) {
+        validateObjCond(sobj, fquery.withCond, scheme)
+    }
+}
+
+private fun combine<*>.validatePathCond(obj: Definition?, sobj: Definition, cond: PathCondition, scheme: GeneratorScheme) {
+    when (cond) {
+        is AndObjPath -> {
+            validatePathCond(obj, sobj, cond.l, scheme)
+            validatePathCond(obj, sobj, cond.r, scheme)
+        }
+        is OrObjPath -> {
+            validatePathCond(obj, sobj, cond.l, scheme)
+            validatePathCond(obj, sobj, cond.r, scheme)
+        }
+        is SubObjPath -> {
+            val subObj = if (obj == null) {
+                scheme.getDefinition(cond.objType.capitalize()) ?: err("unknown object type ${cond.objType}", 0)
+            } else {
+                scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+            }
+            if (cond.subObjPath != null) {
+                validatePathCond(subObj, sobj, cond.subObjPath, scheme)
+            } else {
+                if (!scheme.checkHasAncestor(subObj, sobj)) {
+                    err("${subObj.name} has no subobjects(transitive) of type ${sobj.name}", 0)
+                }
+            }
+
+            if (cond.objCond != null) {
+                validateObjCond(subObj, cond.objCond, scheme)
+            }
+            if (cond.addSearchObjCond != null) {
+                validateObjCond(sobj, cond.addSearchObjCond, scheme)
+            }
+        }
+    }
+}
+
+private fun combine<*>.validateObjCond(obj: Definition, cond: ObjCondition, scheme: GeneratorScheme) {
+    when (cond) {
+        is AndObjCond -> {
+            validateObjCond(obj, cond.l, scheme)
+            validateObjCond(obj, cond.r, scheme)
+        }
+        is OrObjCond -> {
+            validateObjCond(obj, cond.l, scheme)
+            validateObjCond(obj, cond.r, scheme)
+        }
+        is NotObjCond -> {
+            validateObjCond(obj, cond.o, scheme)
+        }
+        is EmptyObjCond -> {
+            if (!(obj.name == "bool" || obj.inheritedFrom == "bool")) {
+                err("${obj.name} is not bool type", 0)
+            }
+        }
+        is IntObjectCond -> {
+            if (!(obj.name == "int" || obj.inheritedFrom == "int")) {
+                err("${obj.name} is not int type", 0)
+            }
+        }
+        is StringObjCond -> {
+            if (!(obj.name == "string" || obj.inheritedFrom == "string")) {
+                err("${obj.name} is not string type", 0)
+            }
+        }
+        is SubObjSearch -> {
+            val subObj = scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+            validateObjCond(subObj, cond.objCond, scheme)
+        }
+    }
 }
 
 private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Parser<ObjCondition>): Parser<PathCondition> {

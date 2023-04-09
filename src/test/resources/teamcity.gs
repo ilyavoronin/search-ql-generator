@@ -35,11 +35,11 @@ object Dependency: CommonBuildConf {
 	snapshot: SnapshotDependency
 }
 
-filter ArtifactDependency {
-	rules: Rules [many] (resolved)
+filter ArtifactDependency : bool {
+	rules: Rule [many] (resolved)
 }
 
-filter SnapshotDependency {
+filter SnapshotDependency : bool {
     option: Option [many]
 }
 
@@ -87,10 +87,15 @@ object Param {
 	value: string
 } `{name} = {value}`
 
+object Option {
+	name: string
+	value: string
+} `{name} = {value}`
+
 object Rule: string
 
 filter Clean: bool
 
-modifier resolved
+modifier resolved : bool(false)
 
-modifier withInherited
+modifier withInherited : bool(false)

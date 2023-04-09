@@ -24,7 +24,7 @@ data class EmptyObjCond(private val unit: Unit = Unit): ObjCondition
 data class SubObjPath(
     val objType: String,
     val objCond: ObjCondition?,
-    val SubObjPath: PathCondition?,
+    val subObjPath: PathCondition?,
     val addSearchObjCond: ObjCondition?
     ) : PathCondition
 

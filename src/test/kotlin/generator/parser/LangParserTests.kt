@@ -3,18 +3,27 @@ package generator.parser
 import generator.lang.ast.*
 import generator.lang.parser.getLangParser
 import generator.scheme.GeneratorScheme
+import generator.scheme.parser.astParser
 import parser.inp
+import utils.getResourceAsText
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class LangParserTests {
+
+    val scheme: GeneratorScheme
+    init {
+        val schemeStr = getResourceAsText("teamcity.gs")!!
+        scheme = GeneratorScheme(astParser.parse(schemeStr.inp()).unwrap())
+    }
     @Test
     fun testSimple() {
         val input = """
             find trigger in buildConf with type ("scheduled")
         """.trimIndent()
 
-        val p = getLangParser(GeneratorScheme(listOf()))
+        val p = getLangParser(scheme)
         val res = p.parse(input.inp())
         assertEquals(FindQuery(
             "trigger",
@@ -27,21 +36,21 @@ class LangParserTests {
     fun testCondition() {
         val input = """
             find project with
-            type ("abacaba")
+            name ("abacaba")
             and
-            (buildConf (type ("T1")) or not buildConf (type ("T2")) )
+            (build_conf (name ("T1")) or not build_conf (name ("T2")) )
         """.trimIndent()
 
-        val p = getLangParser(GeneratorScheme(listOf()))
+        val p = getLangParser(scheme)
         val res = p.parse(input.inp())
         assertEquals(FindQuery(
             "project",
             null,
             AndObjCond(
-                SubObjSearch("type", StringObjCond("abacaba")),
+                SubObjSearch("name", StringObjCond("abacaba")),
                 OrObjCond(
-                    SubObjSearch("buildConf", SubObjSearch("type", StringObjCond("T1"))),
-                    NotObjCond(SubObjSearch("buildConf", SubObjSearch("type", StringObjCond("T2"))))
+                    SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"))),
+                    NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"))))
                 )
             )
         ), res.unwrap())
@@ -54,54 +63,54 @@ class LangParserTests {
             in
             	project
             	(
-            		type ("abacaba")
+            		name ("abacaba")
             		and
-            		(buildConf (type ("T1")) or not buildConf (type ("T2")) )
+            		(build_conf (name ("T1")) or not build_conf (name ("T2")) )
             	) -> {
-            		buildConf
+            		build_conf
             		(
-            		   type ("abacaba")
+            		   name ("abacaba")
             		) and
             		template
             		(
-            		   type ("qwerty")
+            		   id ("qwerty")
             		)
-            	}.{owner ("1")}
+            	}.{type ("1")}
 
             	or 
 
             	project 
             	(
-            	   type ("aba2")
-            	).{owner ("2")}
+            	   name ("aba2")
+            	).{type ("2")}
             
             
             with type ("scheduled")
         """.trimIndent()
 
-        val p = getLangParser(GeneratorScheme(listOf()))
+        val p = getLangParser(scheme)
         val res = p.parse(input.inp())
 
         assertEquals(FindQuery("trigger",
             OrObjPath(
                 SubObjPath("project",
                     AndObjCond(
-                        SubObjSearch("type", StringObjCond("abacaba")),
+                        SubObjSearch("name", StringObjCond("abacaba")),
                         OrObjCond(
-                            SubObjSearch("buildConf", SubObjSearch("type", StringObjCond("T1"))),
-                            NotObjCond(SubObjSearch("buildConf", SubObjSearch("type", StringObjCond("T2"))))
+                            SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"))),
+                            NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"))))
                         )
                     ),
                     AndObjPath(
-                        SubObjPath("buildConf", SubObjSearch("type", StringObjCond("abacaba")), null, null),
-                        SubObjPath("template", SubObjSearch("type", StringObjCond("qwerty")), null, null)
+                        SubObjPath("build_conf", SubObjSearch("name", StringObjCond("abacaba")), null, null),
+                        SubObjPath("template", SubObjSearch("id", StringObjCond("qwerty")), null, null)
                     ),
-                    SubObjSearch("owner", StringObjCond("1"))
+                    SubObjSearch("type", StringObjCond("1"))
                 ),
                 SubObjPath("project",
-                    SubObjSearch("type", StringObjCond("aba2")),
+                    SubObjSearch("name", StringObjCond("aba2")),
                     null,
-                    SubObjSearch("owner", StringObjCond("2"))
+                    SubObjSearch("type", StringObjCond("2"))
                 )
             ),
             SubObjSearch("type", StringObjCond("scheduled"))
