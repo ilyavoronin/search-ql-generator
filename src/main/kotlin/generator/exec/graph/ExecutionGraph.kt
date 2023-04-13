@@ -11,7 +11,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
 
     val root: PathExecutionNode
     val sobj: Object
+    val idToNode: MutableMap<Int, ExecutionNode>
     init {
+        idToNode = mutableMapOf()
         sobj = scheme.getDefinition(findQuery.sobject.capitalize())!! as Object
         root = if (findQuery.inCond != null) {
             buildPathGraph(findQuery.inCond, null, sobj, findQuery.withCond?.let {buildCondGraph(sobj, it) })
@@ -20,12 +22,17 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
         }
     }
 
+    fun getNode(id: Int): ExecutionNode? {
+        return idToNode[id]
+    }
+
     private var _last_id = 0
     abstract inner class ExecutionNode() {
         val id: Int
         private val children = mutableListOf<ExecutionNode>()
         init {
             id = _last_id
+            idToNode[id] = this
             _last_id += 1
         }
         
@@ -34,7 +41,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
         }
     }
 
-    abstract inner class PathExecutionNode: ExecutionNode() {}
+    abstract inner class PathExecutionNode: ExecutionNode()
 
     abstract inner class ObjCondExecutionNode: ExecutionNode()
 
