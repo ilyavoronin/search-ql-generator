@@ -1,7 +1,9 @@
 package generator.exec.graph
 
 import generator.lang.ast.*
+import generator.scheme.ExtendedDefField
 import generator.scheme.GeneratorScheme
+import generator.scheme.ast.DefField
 import generator.scheme.ast.Definition
 import generator.scheme.ast.Object
 import java.lang.IllegalStateException
@@ -18,7 +20,11 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
         root = if (findQuery.inCond != null) {
             buildPathGraph(findQuery.inCond, null, sobj, findQuery.withCond?.let {buildCondGraph(sobj, it) })
         } else {
-            PathSubExecNode(sobj, buildCondGraph(sobj, findQuery.withCond!!), null)
+            PathSubExecNode(sobj,
+                ExtendedDefField(),
+                buildCondGraph(sobj, findQuery.withCond!!),
+                null
+            )
         }
     }
 
@@ -34,6 +40,10 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
             id = _last_id
             idToNode[id] = this
             _last_id += 1
+        }
+
+        fun getChildren(): List<ExecutionNode> {
+            return children
         }
         
         protected fun addChild(node: ExecutionNode) {
@@ -57,9 +67,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
             addChild(r)
         }
     }
-    inner class PathSubExecNode(val obj: Definition, cond: ObjCondExecutionNode?, subPath: PathExecutionNode?) : PathExecutionNode() {
+    inner class PathSubExecNode(val obj: Definition, val contextParent: ExtendedDefField, cond: ObjCondExecutionNode?, subPath: PathExecutionNode?) : PathExecutionNode() {
         init {
-            cond?.let{ addChild(it)}
+            cond?.let{ addChild(it) }
             cond?.let { addChild(it) }
         }
     }
@@ -84,7 +94,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
         }
     }
 
-    inner class ObjSubObjExecNode(val obj: Definition, cond: ObjCondExecutionNode) : ObjCondExecutionNode() {
+    inner class ObjSubObjExecNode(val obj: Definition, val extendedDefField: ExtendedDefField,  cond: ObjCondExecutionNode) : ObjCondExecutionNode() {
         init {
             addChild(cond)
         }
@@ -128,23 +138,28 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
                     addSobjCond
                 }
 
-                val newObj = if (currObj != null) {
+                val (newObj, defField) = if (currObj != null) {
                     scheme.getSubObj(currObj, cond.objType)!!
                 } else {
-                    scheme.getDefinition(cond.objType.capitalize())!!
+                    val def = scheme.getDefinition(cond.objType.capitalize())!!
+                    val defField = DefField("", "", emptyList(), false, false, false)
+                    Pair(def, ExtendedDefField(null, defField))
                 }
 
                 val currObjCond = cond.objCond?.let { buildCondGraph(newObj, it) }
 
-                var currPathCond = cond.subObjPath?.let { buildPathGraph(it, newObj, sobjDef,  newAddObjCond) }
+                var currPathCond = cond.subObjPath?.let { buildPathGraph(it, newObj, sobjDef, newAddObjCond) }
 
                 if (currPathCond == null) {
                     val used = mutableSetOf<String>()
                     currObj?.let {used.add(it.name) }
-                    currPathCond = buildPathToSobj(sobjDef, newObj, PathSubExecNode(sobjDef, newAddObjCond, null), used)
+                    currPathCond = buildPathToSobj(sobjDef, newObj, defField, newAddObjCond, used)
+                    if (newObj.name == sobjDef.name && currPathCond != null) {
+                        return currPathCond
+                    }
                 }
 
-                return PathSubExecNode(newObj, currObjCond, currPathCond)
+                return PathSubExecNode(newObj, defField, currObjCond, currPathCond)
             }
         }
     }
@@ -178,15 +193,15 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
                 )
             }
             is SubObjSearch -> {
-                val newObj = scheme.getSubObj(currObj, objCond.objType)!!
-                return ObjSubObjExecNode(newObj, buildCondGraph(newObj, objCond.objCond))
+                val (newObj, defField) = scheme.getSubObj(currObj, objCond.objType)!!
+                return ObjSubObjExecNode(newObj, defField, buildCondGraph(newObj, objCond.objCond))
             }
         }
     }
 
-    fun buildPathToSobj(sobj: Definition, currObj: Definition, sobjPathNode: PathExecutionNode, used: MutableSet<String>): PathExecutionNode? {
+    fun buildPathToSobj(sobj: Definition, currObj: Definition, parentObjField: ExtendedDefField, newAddObjCond: ObjCondExecutionNode?, used: MutableSet<String>): PathExecutionNode? {
         if (currObj.name == sobj.name) {
-            return sobjPathNode
+            return PathSubExecNode(sobj, parentObjField, newAddObjCond, null)
         }
 
         val paths = mutableListOf<PathExecutionNode>()
@@ -195,7 +210,8 @@ class ExecutionGraph(val scheme: GeneratorScheme, findQuery: FindQuery) {
                 continue
             }
             used.add(subObj.memType)
-            val pathCond = buildPathToSobj(sobj, scheme.getDefinition(subObj.memType)!!, sobjPathNode, used)
+            val newObj = scheme.getDefinition(subObj.memType)!!
+            val pathCond = buildPathToSobj(sobj, newObj, ExtendedDefField(newObj, subObj), newAddObjCond, used)
             used.remove(subObj.memType)
             if (pathCond != null) {
                 paths.add(pathCond)

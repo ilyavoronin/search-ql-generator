@@ -72,7 +72,7 @@ private fun combine<*>.validatePathCond(obj: Definition?, sobj: Definition, cond
             val subObj = if (obj == null) {
                 scheme.getDefinition(cond.objType.capitalize()) ?: err("unknown object type ${cond.objType}", 0)
             } else {
-                scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+                scheme.getSubObj(obj, cond.objType)?.first ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
             }
             if (cond.subObjPath != null) {
                 validatePathCond(subObj, sobj, cond.subObjPath, scheme)
@@ -121,7 +121,7 @@ private fun combine<*>.validateObjCond(obj: Definition, cond: ObjCondition, sche
             }
         }
         is SubObjSearch -> {
-            val subObj = scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+            val subObj = scheme.getSubObj(obj, cond.objType)?.first ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
             validateObjCond(subObj, cond.objCond, scheme)
         }
     }

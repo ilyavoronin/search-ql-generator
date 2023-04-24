@@ -105,7 +105,7 @@ class GeneratorScheme(astList: List<AST>) {
         return defs[name]
     }
 
-    fun getSubObj(obj: Definition, defName: String): Definition? {
+    fun getSubObj(obj: Definition, defName: String): Pair<Definition, ExtendedDefField>? {
         val members = if (obj.inheritedFrom == null) {
             obj.members
         } else {
@@ -113,7 +113,9 @@ class GeneratorScheme(astList: List<AST>) {
         }
         for (m in members) {
             if (m.memName == defName) {
-                return getDefinition(m.memType)
+                return getDefinition(m.memType)?.let {
+                    Pair(it, ExtendedDefField(obj, m))
+                }
             }
         }
         return null
@@ -143,4 +145,27 @@ class GeneratorScheme(astList: List<AST>) {
         }
         return false
     }
+}
+
+class ExtendedDefField(
+    val parent: Definition?,
+    defField: DefField,
+) {
+    val memName: String
+    val memType: String
+    val modifiers: List<String>
+    val isMany: Boolean
+    val isRev: Boolean
+    val isSource: Boolean
+
+    init {
+        memName = defField.memName
+        memType = defField.memType
+        modifiers = defField.modifiers
+        isMany = defField.isMany
+        isRev = defField.isRev
+        isSource = defField.isSource
+    }
+
+    constructor() : this(null, DefField("", "", emptyList(), false, false, false))
 }
