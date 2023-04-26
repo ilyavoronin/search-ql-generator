@@ -19,6 +19,14 @@ class ExecutionGraphTest {
         scheme = GeneratorScheme(astParser.parse(schemeStr.inp()).unwrap())
     }
 
+    fun <T: Any> assertNode(id: Int, typ: KClass<T>, node: ExecutionGraph.ExecutionNode, cntChildren: Int): T {
+        assertEquals(id, node.id)
+        assertTrue(typ.isInstance(node))
+        assertEquals(cntChildren, node.getChildren().size)
+
+        return node as T
+    }
+
     @Test
     fun testBuildGraph() {
         val input = """
@@ -210,12 +218,4 @@ class ExecutionGraphTest {
 
         assertNode(0, ExecutionGraph.ObjStringExecNode::class, commonTriggerNode.getChildren()[0], 0)
     }
-}
-
-fun <T: Any> assertNode(id: Int, typ: KClass<T>, node: ExecutionGraph.ExecutionNode, cntChildren: Int): T {
-    assertEquals(id, node.id)
-    assertTrue(typ.isInstance(node))
-    assertEquals(cntChildren, node.getChildren().size)
-
-    return node as T
 }
