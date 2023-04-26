@@ -27,22 +27,54 @@ class GeneratorScheme(astList: List<AST>) {
 
         for (ast in astList) {
             when (ast) {
-                is Object -> {
-                    objs.add(ast)
-                    objsMap[ast.name] = ast
-                }
-                is Filter -> {
-                    fs.add(ast)
-                    objsMap[ast.name] = ast
-                }
                 is Interface -> {
                     interfaceMap[ast.name] = ast
                     ints.add(ast)
                 }
+                else -> {}
+            }
+        }
+
+        val astList2 = astList.map { ast ->
+            val additionalMembers = if (ast is Accessible && ast.inheritedFrom != null && ast.inheritedFrom !in listOf("string", "int", "bool")) {
+                interfaceMap[ast.inheritedFrom]!!.members
+            } else {
+                null
+            }
+            val ast = when (ast) {
+                is Object -> {
+                    val ast = if (additionalMembers == null) {
+                        ast
+                    } else {
+                        val members = mutableListOf<DefField>()
+                        members.addAll(ast.members)
+                        members.addAll(additionalMembers)
+                        Object(ast.name, ast.inheritedFrom, members, ast.shortCut, ast.source)
+                    }
+                    objs.add(ast)
+                    objsMap[ast.name] = ast
+                    ast
+                }
+                is Filter -> {
+                    val ast = if (additionalMembers == null) {
+                        ast
+                    } else {
+                        val members = mutableListOf<DefField>()
+                        members.addAll(ast.members)
+                        members.addAll(additionalMembers)
+                        Filter(ast.name, ast.inheritedFrom, members, ast.shortCut)
+                    }
+                    fs.add(ast)
+                    objsMap[ast.name] = ast
+                    ast
+                }
                 is Modifier -> {
                     mods.add(ast)
                     modifierMap[ast.name] = ast
+                    ast
                 }
+
+                else -> {ast}
             }
             when (ast) {
                 is Definition -> {
@@ -50,31 +82,23 @@ class GeneratorScheme(astList: List<AST>) {
                 }
                 else -> {}
             }
+            ast
         }
 
-        val interfaceObjectMap = mutableMapOf<String, List<Definition>>()
-        for (ast in astList) {
+        for (ast in astList2) {
             when (ast) {
                 is Accessible -> {
                     objectTree[ast.name] = ast.members.map {
                         defs[it.memType]!!
                     }.toMutableList()
                 }
-                is Interface -> {
-                    interfaceObjectMap[ast.name] = ast.members.map {
-                        defs[it.memType]!!
-                    }.toList()
-                }
                 else -> {}
             }
         }
 
-        for (ast in astList) {
+        for (ast in astList2) {
             when (ast) {
                 is Accessible -> {
-                    if (ast.inheritedFrom != null && ast.inheritedFrom !in listOf("string", "bool", "int")) {
-                        objectTree[ast.name]!!.addAll(interfaceObjectMap[ast.inheritedFrom] ?: throw RuntimeException(ast.inheritedFrom))
-                    }
                     for (subObj in objectTree[ast.name]!!) {
                         parentObjectTree.computeIfAbsent(subObj.name) { mutableListOf() }.add(ast)
                     }
@@ -106,12 +130,7 @@ class GeneratorScheme(astList: List<AST>) {
     }
 
     fun getSubObj(obj: Definition, defName: String): Pair<Definition, ExtendedDefField>? {
-        val members = if (obj.inheritedFrom == null) {
-            obj.members
-        } else {
-            obj.members + getDefinition(obj.inheritedFrom!!)!!.members
-        }
-        for (m in members) {
+        for (m in obj.members) {
             if (m.memName == defName) {
                 return getDefinition(m.memType)?.let {
                     Pair(it, ExtendedDefField(obj, m))

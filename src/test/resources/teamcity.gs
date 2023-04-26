@@ -30,7 +30,7 @@ interface CommonBuildConf {
 
 object BuildConf: CommonBuildConf
 
-object Dependency: CommonBuildConf {
+filter Dependency: CommonBuildConf {
 	artifact: ArtifactDependency [many]
 	snapshot: SnapshotDependency
 }
@@ -44,7 +44,6 @@ filter SnapshotDependency : bool {
 }
 
 source object Template {
-	inheritedBy: BuildConf [rev, many]
 	id: Id [source]
 	name: Name [source]
 	trigger: Trigger [many]
