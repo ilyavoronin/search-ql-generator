@@ -5,6 +5,7 @@ import generator.exec.graph.ExecutionGraph
 import generator.exec.graph.FixedBottomUpExecOrder
 import generator.lang.parser.getLangParser
 import generator.scheme.GeneratorScheme
+import generator.scheme.codegen.GeneratedObjects
 import generator.scheme.parser.astParser
 import org.junit.jupiter.api.Test
 import parser.inp
@@ -52,7 +53,7 @@ class ExecOrderTest {
         val p = getLangParser(scheme)
         val res = p.parse(input.inp()).unwrap()
 
-        val graph = ExecutionGraph(scheme, res)
+        val graph = ExecutionGraph(scheme, GeneratedObjects(listOf(), listOf()), res)
 
         val order = FixedBottomUpExecOrder().genExecOrder(graph.root, graph.sobj)
 
@@ -62,7 +63,7 @@ class ExecOrderTest {
         val source_nodes = setOf(6, 8, 17, 21, 30)
         order.forEach { node ->
             if (node.nodeId in source_nodes) {
-                assertEquals(ExecType.ObjCalc, node.type, "expected ExecOrderNode ${node.nodeId} to be of type ObjCalc")
+                assertEquals(ExecType.SourcePropertyCalc, node.type, "expected ExecOrderNode ${node.nodeId} to be of type ObjCalc")
             } else {
                 assertEquals(ExecType.FilterCalc, node.type, "expected ExecOrderNode ${node.nodeId} to be of type FilterCalc")
             }

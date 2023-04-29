@@ -1,7 +1,6 @@
 package generator.exec.graph
 
 import generator.scheme.ast.Definition
-import generator.scheme.ast.Object
 import java.lang.RuntimeException
 
 class FixedBottomUpExecOrder : ExecutionOrder {
@@ -41,14 +40,14 @@ class FixedBottomUpExecOrder : ExecutionOrder {
                 val allowObjCalc = allowObjCalc && (v.contextParent.isRev || v.contextParent.isSource || !metSource)
                 if (v.contextParent.isSource && allowObjCalc) {
                     buildForChildren(v, sobj, res, false, true)
-                    res.add(ExecOrderNode(v.id, ExecType.ObjCalc))
+                    res.add(ExecOrderNode(v.id, ExecType.SourcePropertyCalc))
                     true
                 } else {
                     val cr = buildForChildren(v, sobj, res, allowObjCalc, true)
                     if (metSource || (cr[0] || cr[1])) {
                         res.add(ExecOrderNode(v.id, ExecType.FilterCalc))
                     } else {
-                        res.add(ExecOrderNode(v.id, ExecType.ObjCalc))
+                        res.add(ExecOrderNode(v.id, ExecType.SourcePropertyCalc))
                     }
                     cr[0] || cr[1]
                 }
@@ -83,7 +82,7 @@ class FixedBottomUpExecOrder : ExecutionOrder {
                 val allowObjCalc = allowObjCalc && (v.extendedDefField.isRev || v.extendedDefField.isSource || !metSource)
                 if (v.extendedDefField.isSource && allowObjCalc) {
                     buildForChildren(v, sobj, res, false, true)
-                    res.add(ExecOrderNode(v.id, ExecType.ObjCalc))
+                    res.add(ExecOrderNode(v.id, ExecType.SourcePropertyCalc))
                     true
                 } else {
                     val cr = buildForChildren(v, sobj, res, allowObjCalc, true)

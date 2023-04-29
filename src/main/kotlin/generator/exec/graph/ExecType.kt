@@ -4,5 +4,6 @@ data class ExecOrderNode(val nodeId: Int, val type: ExecType)
 
 enum class ExecType {
     FilterCalc,
-    ObjCalc
+    SourcePropertyCalc,
+    SourceObjCalc
 }
