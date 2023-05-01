@@ -1,11 +1,6 @@
-package generator.scheme.codegen
-
-import com.squareup.kotlinpoet.MemberName.Companion.member
 import generator.GeneratedObject
-import generator.exec.graph.ExecutionGraph
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
-import kotlin.reflect.jvm.kotlinFunction
 
 class GeneratedObjects(
     objs: List<Pair<KClass<*>, String>>,

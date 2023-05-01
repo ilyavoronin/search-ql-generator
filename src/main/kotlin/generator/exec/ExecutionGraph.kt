@@ -1,4 +1,4 @@
-package generator.exec.graph
+package generator.exec
 
 import generator.GeneratedObject
 import generator.lang.ast.*
@@ -8,8 +8,6 @@ import generator.scheme.ast.DefField
 import generator.scheme.ast.Definition
 import generator.scheme.ast.Filter
 import generator.scheme.ast.Object
-import generator.scheme.codegen.GeneratedObjects
-import generator.scheme.codegen.ValueObject
 import java.lang.IllegalStateException
 
 fun interface ObjRetriever {
@@ -28,16 +26,25 @@ public interface IntBuiltIn {
     public fun getInt(): Int
 }
 
-class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjects, findQuery: FindQuery) {
+class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjects, val findQuery: FindQuery) {
 
-    fun interface ObjFilter {
+    fun execute(order: ExecutionOrder): List<GeneratedObject> {
+        val order = order.genExecOrder(root, sobj)
+        for (ordElem in order) {
+            idToNode[ordElem.nodeId]!!.execute(ordElem.type)
+        }
+
+        return (executionResult[root.id] as PathExecutionResult).bottomLevelObjects!!.toList()
+    }
+
+    private fun interface ObjFilter {
         fun accepts(obj: GeneratedObject): Boolean
     }
 
 
     sealed interface ExecutionResult
 
-    data class ObjExecutionResult(val objFilter: ObjFilter?, val objs: Set<GeneratedObject>?): ExecutionResult
+    private data class ObjExecutionResult(val objFilter: ObjFilter?, val objs: Set<GeneratedObject>?): ExecutionResult
 
     data class PathExecutionResult(val objRetriever: ObjRetriever?, val bottomLevelObjects: Set<GeneratedObject>?): ExecutionResult
 

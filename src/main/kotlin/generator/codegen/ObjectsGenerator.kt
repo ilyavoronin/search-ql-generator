@@ -1,4 +1,4 @@
-package generator.scheme.codegen
+package generator.codegen
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -9,12 +9,8 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
 
-class ObjectsGenerator {
+internal object ObjectsGenerator {
     fun genCode(path: String, pack: String, scheme: GeneratorScheme) {
-        if (!Files.exists(Paths.get(path))) {
-            Files.createDirectory(Paths.get(path))
-        }
-
         val modsMap = mutableMapOf<String, Modifier>()
         for (mod in scheme.modifiers) {
             modsMap[mod.name] = mod
@@ -91,6 +87,8 @@ class ObjectsGenerator {
             objSpec.inheritedFrom?.let {
                 int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[it]?.name ?: it))
             }
+            int.addSuperinterface(TypeVariableName.invoke("GeneratedObject"))
+
             for (fieldSpec in objSpec.members) {
                 val f =  FunSpec
                     .builder("get${fieldSpec.memName.cap()}")
@@ -115,7 +113,7 @@ class ObjectsGenerator {
             res[objSpec.name] = int.build()
         }
 
-        return res;
+        return res
     }
 
     private fun String.cap() = this.replaceFirstChar {

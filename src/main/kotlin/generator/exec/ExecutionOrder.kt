@@ -1,4 +1,4 @@
-package generator.exec.graph
+package generator.exec
 
 import generator.scheme.ast.Definition
 

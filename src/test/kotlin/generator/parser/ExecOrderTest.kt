@@ -1,11 +1,11 @@
 package generator.parser
 
-import generator.exec.graph.ExecType
-import generator.exec.graph.ExecutionGraph
-import generator.exec.graph.FixedBottomUpExecOrder
+import generator.exec.ExecutionGraph
+import generator.exec.FixedBottomUpExecOrder
+import generator.exec.GeneratedObjects
+import generator.exec.ExecType
 import generator.lang.parser.getLangParser
 import generator.scheme.GeneratorScheme
-import generator.scheme.codegen.GeneratedObjects
 import generator.scheme.parser.astParser
 import org.junit.jupiter.api.Test
 import parser.inp

@@ -1,0 +1,79 @@
+import utils.Ok
+import utils.Result
+
+class TokenParser<T>(private val token: String, private val result: T): Parser<T> {
+    override fun parse(input: ParserInput): Result<T, ParserError> {
+        return if (input.startsWith(token)) {
+            input.forward(token.length)
+            Ok(result)
+        } else {
+            createErr(token, input.pos)
+        }
+    }
+}
+
+fun token(token: String): Parser<String> {
+    return TokenParser(token, token)
+}
+
+fun oneOf(tokens: List<String>): Parser<String> {
+    return tokens.map { token(it) }.reduce { acc, parser -> acc.or(parser) }
+}
+
+fun <T> parseList(parser: Parser<T>, begin: String, end: String, sep: String) = combine {
+    val res = mutableListOf<T>()
+    token(begin).s()[it]
+    while (true) {
+        val e = parser.s()[it]
+        res.add(e)
+        if (token(sep)(it).isErr()) {
+            spaces[it]
+            break
+        }
+        spaces[it]
+    }
+    token(end)[it]
+    res.toList()
+}
+
+val blank = oneOf(listOf(" ", "\t", "\n", "\r\n"))
+
+val spaces = oneOf(listOf(" ", "\t")).many()
+
+val newLine = combine {
+    val elems = blank.many()[it]
+    if (!elems.contains("\n") && !elems.contains("\r\n")) {
+        err("expected new line", it.pos)
+    }
+}
+
+fun <T> Parser<T>.blank() = combine {
+    val res = this@blank[it]
+    blank.many()[it]
+    res
+}
+fun <T> Parser<T>.blankReq() = combine {
+    val res = this@blankReq[it]
+    blank.atLeast(1)[it]
+    res
+}
+
+fun <T> Parser<T>.newLine() = combine {
+    val res = this@newLine[it]
+    newLine[it]
+    res
+}
+
+fun <T> Parser<T>.spaces() = combine {
+    val res = this@spaces[it]
+    spaces[it]
+    res
+}
+
+fun <T> Parser<T>.end() = combine {
+    val res = this@end[it]
+    if (it.pos != it.text.length) {
+        err("failed to parse until the end", it.pos)
+    }
+    res
+}
