@@ -1,3 +1,4 @@
+
 sealed class Result<out T, E> {
     protected abstract fun value(): T?
 

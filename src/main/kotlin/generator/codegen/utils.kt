@@ -28,3 +28,7 @@ fun saveFile(path: String, resourcePath: String, filename: String, pack: String,
 
     saveCodeToFile(filename, code, path, pack, *imports)
 }
+
+fun joinPackages(pack: String, vararg other: String): String {
+    return other.joinToString(".", "$pack.") { it }
+}

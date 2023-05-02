@@ -1,12 +1,3 @@
-import generator.GeneratedObject
-import generator.lang.ast.*
-import generator.scheme.ExtendedDefField
-import generator.scheme.GeneratorScheme
-import generator.scheme.ast.DefField
-import generator.scheme.ast.Definition
-import generator.scheme.ast.Filter
-import generator.scheme.ast.Object
-import java.lang.IllegalStateException
 
 fun interface ObjRetriever {
     fun retrieve(obj: GeneratedObject, intersectWith: Set<GeneratedObject>?): Set<GeneratedObject>

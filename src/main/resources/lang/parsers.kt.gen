@@ -1,10 +1,4 @@
 
-import generator.lang.ast.*
-import generator.scheme.GeneratorScheme
-import generator.scheme.ast.Definition
-import generator.scheme.ast.Filter
-import parser.*
-
 private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_') }
 
 fun getLangParser(scheme: GeneratorScheme): Parser<FindQuery> {

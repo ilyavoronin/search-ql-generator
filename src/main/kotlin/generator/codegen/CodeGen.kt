@@ -9,9 +9,9 @@ object CodeGen {
         if (!Files.exists(Paths.get(path))) {
             Files.createDirectories(Paths.get(path))
         }
-        ObjectsGenerator.genCode(path, "$pack.objects", scheme)
-        ExecGenerator.genCode(path, "$pack.exec", scheme)
-        ParserGenerator.genCode(path, "$pack.parser")
+        ObjectsGenerator.genCode(path, "$pack.objects", scheme, pack)
+        ExecGenerator.genCode(path, "$pack.exec", scheme, pack)
+        ParserGenerator.genCode(path, "$pack.parser", pack)
         SchemeGenerator.genCode(path, "$pack.scheme")
 
         fun saveFileWithPackage(filename: String) {

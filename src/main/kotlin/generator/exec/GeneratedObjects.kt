@@ -5,13 +5,13 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 
 class GeneratedObjects(
-    objs: List<Pair<KClass<*>, String>>,
-    filters: List<Pair<KClass<*>, String>>
+    objs: List<KClass<out GeneratedObject>>,
+    filters: List<KClass<out GeneratedObject>>
 ) {
     private val defsClasses = mutableMapOf<String, KClass<*>>()
     init {
-        objs.forEach { defsClasses[it.second] = it.first }
-        filters.forEach { defsClasses[it.second] = it.first }
+        objs.forEach { defsClasses[it.simpleName.toString()] = it }
+        filters.forEach { defsClasses[it.simpleName.toString()] = it }
     }
 
     fun getDef(name: String): KClass<*> {

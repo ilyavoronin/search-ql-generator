@@ -10,16 +10,16 @@ import java.nio.file.Paths
 import java.util.*
 
 internal object ObjectsGenerator {
-    fun genCode(path: String, pack: String, scheme: GeneratorScheme) {
+    fun genCode(path: String, pack: String, scheme: GeneratorScheme, basePack: String) {
         val modsMap = mutableMapOf<String, Modifier>()
         for (mod in scheme.modifiers) {
             modsMap[mod.name] = mod
         }
 
         val builtIns = this.genBuiltIns()
-        val interfaces = this.genObjects(scheme.interfaces, modsMap, builtIns)
-        val objects = this.genObjects(scheme.objects, modsMap, builtIns)
-        val filters = this.genObjects(scheme.filters, modsMap, builtIns)
+        val interfaces = this.genObjects(scheme.interfaces, modsMap, builtIns, basePack)
+        val objects = this.genObjects(scheme.objects, modsMap, builtIns, basePack)
+        val filters = this.genObjects(scheme.filters, modsMap, builtIns, basePack)
 
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
         for (b in builtIns.values) {
@@ -74,7 +74,7 @@ internal object ObjectsGenerator {
         return res
     }
 
-    private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>): Map<String, TypeSpec> {
+    private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>, basePack: String): Map<String, TypeSpec> {
         val res = mutableMapOf<String, TypeSpec>()
         val paramBuiltIns = mapOf(
             Pair("bool", "Boolean"),
@@ -87,9 +87,12 @@ internal object ObjectsGenerator {
             objSpec.inheritedFrom?.let {
                 int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[it]?.name ?: it))
             }
-            int.addSuperinterface(TypeVariableName.invoke("GeneratedObject"))
+            int.addSuperinterface(ClassName(basePack, "GeneratedObject"))
 
             for (fieldSpec in objSpec.members) {
+                if (fieldSpec.inherited) {
+                    continue
+                }
                 val f =  FunSpec
                     .builder("get${fieldSpec.memName.cap()}")
                     .addModifiers(KModifier.ABSTRACT)

@@ -1,5 +1,3 @@
-import utils.Ok
-import utils.Result
 
 class TokenParser<T>(private val token: String, private val result: T): Parser<T> {
     override fun parse(input: ParserInput): Result<T, ParserError> {

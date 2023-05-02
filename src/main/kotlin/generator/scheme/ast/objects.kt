@@ -48,7 +48,8 @@ data class DefField(
     //params:
     val isMany: Boolean,
     val isSource: Boolean,
-    val isRev: Boolean
+    val isRev: Boolean,
+    val inherited: Boolean = false
 )
 
 data class ShortCut(val parsingTemplate: String)

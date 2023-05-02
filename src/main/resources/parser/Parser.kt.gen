@@ -1,5 +1,3 @@
-import utils.Err
-import utils.Result
 
 interface Parser<out T> {
     fun parse(input: ParserInput): Result<T, ParserError>

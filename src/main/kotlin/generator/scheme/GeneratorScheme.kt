@@ -1,7 +1,6 @@
 package generator.scheme
 
 import generator.scheme.ast.*
-import java.lang.RuntimeException
 
 class GeneratorScheme(astList: List<AST>) {
     val interfaces: List<Interface>
@@ -37,7 +36,7 @@ class GeneratorScheme(astList: List<AST>) {
 
         val astList2 = astList.map { ast ->
             val additionalMembers = if (ast is Accessible && ast.inheritedFrom != null && ast.inheritedFrom !in listOf("string", "int", "bool")) {
-                interfaceMap[ast.inheritedFrom]!!.members
+                interfaceMap[ast.inheritedFrom]!!.members.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, it.isSource, it.isRev, true) }
             } else {
                 null
             }

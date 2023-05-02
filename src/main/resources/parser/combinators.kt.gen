@@ -1,6 +1,3 @@
-import utils.Err
-import utils.Ok
-import utils.Result
 
 fun <T> Parser<T>.or(other: Parser<T>): Parser<T> {
     return object : Parser<T> {
