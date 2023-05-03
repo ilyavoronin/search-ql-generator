@@ -180,9 +180,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         ExecType.FilterCalc -> {
                             val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent!!.name)
                             val getMethod = genObjects.getDefMethod(contextParent.parent.name, contextParent.memName)
-                            val resObjs = res.objs?.map {
+                            val resObjs = res.objs?.flatMap {
                                 // TODO filter by super-objects filters
-                                revMethod.call(it) as GeneratedObject
+                                revMethod.call(it) as List<GeneratedObject>
                             }?.toSet()
                             val resRetr = if (res.objFilter != null) {
                                 ObjRetriever { obj, intersectWith ->
@@ -403,7 +403,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent!!.name)
                     val getMethod = genObjects.getDefMethod(extendedDefField.parent.name, extendedDefField.memName)
                     val objs = res.objs?.let { objs ->
-                        objs.map { revMethod.call(obj) as GeneratedObject }
+                        objs.flatMap { revMethod.call(obj) as List<GeneratedObject> }
                     }
 
                     val objFilter = res.objFilter?.let { filter ->
@@ -426,7 +426,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent!!.name)
                         val objs = genObjects.getAllObjectsOfType(obj.name)
                             .filter { res.objFilter.accepts(it) }
-                            .map { revMethod.call(it) as GeneratedObject }
+                            .flatMap { revMethod.call(it) as List<GeneratedObject> }
                             .toSet()
 
                         resObjs.addAll(objs)
