@@ -59,6 +59,7 @@ internal object ExecGenerator {
             joinPackages(basePack, "objects", "IntBuiltIn"),
             joinPackages(basePack, "objects", "BoolBuiltIn"),
             joinPackages(basePack, "parser", "lang", "*"),
+            "kotlin.reflect.KCallable"
         )
     }
 
