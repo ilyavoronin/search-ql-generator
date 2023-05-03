@@ -39,7 +39,7 @@ class GeneratedObjects(
     }
 
     fun getAllObjectsByProperty(obj: String, property: String, value: ValueObject): List<GeneratedObject> {
-        val methodName = "get${property.capitalize()}By${obj.capitalize()}"
+        val methodName = "get${obj.capitalize()}By${property.capitalize()}"
         val method = ObjectsSource::class.members.single { it.name == methodName }
 
         return method.call(source, value) as List<GeneratedObject>
