@@ -36,7 +36,7 @@ class GeneratorScheme(astList: List<AST>) {
 
         val astList2 = astList.map { ast ->
             val additionalMembers = if (ast is Accessible && ast.inheritedFrom != null && ast.inheritedFrom!!.first !in listOf("string", "int", "bool")) {
-                interfaceMap[ast.inheritedFrom!!.first]!!.members.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, it.isSource, it.isRev, true) }
+                interfaceMap[ast.inheritedFrom!!.first]!!.members.map { DefField(it.reference, it.memName, it.memType, it.modifiers, it.isMany, it.isSource, it.isRev, true) }
             } else {
                 null
             }
@@ -49,7 +49,7 @@ class GeneratorScheme(astList: List<AST>) {
                         members.addAll(ast.members)
                         members.addAll(
                             if (ast.inheritedFrom!!.second) {
-                                additionalMembers.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                                additionalMembers.map { DefField(it.reference, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
                             } else {
                                 additionalMembers
                             })
@@ -67,7 +67,7 @@ class GeneratorScheme(astList: List<AST>) {
                         members.addAll(ast.members)
                         members.addAll(
                             if (ast.inheritedFrom!!.second) {
-                                additionalMembers.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                                additionalMembers.map { DefField(it.reference, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
                             } else {
                                 additionalMembers
                             })
@@ -195,5 +195,5 @@ class ExtendedDefField(
         isSource = defField.isSource
     }
 
-    constructor() : this(null, DefField("", "", emptyList(), false, false, false))
+    constructor() : this(null, DefField( false, "", "", emptyList(), false, false, false))
 }

@@ -541,7 +541,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     scheme.getSubObj(currObj, cond.objType)!!
                 } else {
                     val def = scheme.getDefinition(cond.objType.capitalize())!!
-                    val defField = DefField("", "", emptyList(), false, false, false)
+                    val defField = DefField(false, "", "", emptyList(), false, false, false)
                     Pair(def, ExtendedDefField(null, defField))
                 }
 

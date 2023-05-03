@@ -42,6 +42,7 @@ data class Filter(
 ): Accessible()
 
 data class DefField(
+    val reference: Boolean,
     val memName: String,
     val memType: String,
     val modifiers: List<String>,
@@ -49,7 +50,7 @@ data class DefField(
     val isMany: Boolean,
     val isSource: Boolean,
     val isRev: Boolean,
-    val inherited: Boolean = false
+    val inherited: Boolean = false,
 )
 
 data class ShortCut(val parsingTemplate: String)

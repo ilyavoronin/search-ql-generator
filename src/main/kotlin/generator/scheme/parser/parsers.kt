@@ -121,6 +121,7 @@ private val defBodyParser = combine {
 }
 
 private val fieldParser = combine {
+    val isReference = token("ref").br()(it).unwrapOrNull()
     val name = parseVar.s()[it]
     token(":").s()[it]
     val type = parseVar.s()[it]
@@ -143,6 +144,7 @@ private val fieldParser = combine {
     newLine[it]
 
     DefField(
+        isReference != null,
         name,
         type,
         mods.unwrapOrNull() ?: listOf(),

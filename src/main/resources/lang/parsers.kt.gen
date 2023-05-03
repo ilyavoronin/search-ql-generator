@@ -99,17 +99,17 @@ private fun combine<*>.validateObjCond(obj: Definition, cond: ObjCondition, sche
             validateObjCond(obj, cond.o, scheme)
         }
         is EmptyObjCond -> {
-            if (!(obj.name == "bool" || obj.inheritedFrom == "bool")) {
+            if (!(obj.name == "bool" || obj.inheritedFrom?.first == "bool")) {
                 err("${obj.name} is not bool type", 0)
             }
         }
         is IntObjectCond -> {
-            if (!(obj.name == "int" || obj.inheritedFrom == "int")) {
+            if (!(obj.name == "int" || obj.inheritedFrom?.first == "int")) {
                 err("${obj.name} is not int type", 0)
             }
         }
         is StringObjCond -> {
-            if (!(obj.name == "string" || obj.inheritedFrom == "string")) {
+            if (!(obj.name == "string" || obj.inheritedFrom?.first == "string")) {
                 err("${obj.name} is not string type", 0)
             }
         }
