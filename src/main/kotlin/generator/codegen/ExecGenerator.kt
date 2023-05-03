@@ -70,7 +70,7 @@ internal object ExecGenerator {
 
         fun genMembersList(m: List<DefField>): String {
             val l = m.joinToString(",") { def ->
-                "DefField(\"${def.memName}\", \"${def.memType}\", listOf(${def.modifiers.joinToString { "\"it\"" }}), ${def.isMany}, ${def.isSource}, ${def.isRev})"
+                "DefField(${def.reference}, \"${def.memName}\", \"${def.memType}\", listOf(${def.modifiers.joinToString { "\"it\"" }}), ${def.isMany}, ${def.isSource}, ${def.isRev})"
             }
             return "listOf($l)"
         }
