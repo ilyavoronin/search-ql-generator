@@ -53,7 +53,7 @@ class GeneratorScheme(astList: List<AST>) {
                             } else {
                                 additionalMembers
                             })
-                        Object(ast.name, null, members, ast.shortCut, ast.source)
+                        Object(ast.name, ast.inheritedFrom, members, ast.shortCut, ast.source)
                     }
                     objs.add(ast)
                     objsMap[ast.name] = ast
@@ -71,7 +71,7 @@ class GeneratorScheme(astList: List<AST>) {
                             } else {
                                 additionalMembers
                             })
-                        Filter(ast.name, null, members, ast.shortCut)
+                        Filter(ast.name, ast.inheritedFrom, members, ast.shortCut)
                     }
                     fs.add(ast)
                     objsMap[ast.name] = ast

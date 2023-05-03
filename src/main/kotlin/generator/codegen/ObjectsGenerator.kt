@@ -21,22 +21,38 @@ internal object ObjectsGenerator {
         val objects = this.genObjects(scheme.objects, modsMap, builtIns, basePack)
         val filters = this.genObjects(scheme.filters, modsMap, builtIns, basePack)
 
+        (scheme.filters.asSequence() + scheme.objects.asSequence()).forEach {
+           for (field in it.members) {
+               if (field.isRev) {
+                   val parent = filters[field.memType] ?: objects[field.memType]!!
+                   val listType = ClassName("kotlin.collections", "List")
+
+                   val frev = FunSpec
+                       .builder("parent${it.name}")
+                       .addModifiers(KModifier.ABSTRACT)
+                       .returns(listType.parameterizedBy(TypeVariableName.invoke(it.name)))
+
+                   parent.addFunction(frev.build())
+               }
+           }
+        }
+
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
         for (b in builtIns.values) {
             fileBuiltIns.addType(b)
         }
         val fileInt = FileSpec.builder(pack, "interfaces")
         for (int in interfaces.values) {
-            fileInt.addType(int)
+            fileInt.addType(int.build())
         }
 
         val fileFilters = FileSpec.builder(pack, "filters")
         for (filt in filters.values) {
-            fileFilters.addType(filt)
+            fileFilters.addType(filt.build())
         }
         val fileObjects = FileSpec.builder(pack, "objects")
         for (obj in objects.values) {
-            fileObjects.addType(obj)
+            fileObjects.addType(obj.build())
         }
 
         fileBuiltIns.build().writeTo(Paths.get(path))
@@ -74,8 +90,8 @@ internal object ObjectsGenerator {
         return res
     }
 
-    private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>, basePack: String): Map<String, TypeSpec> {
-        val res = mutableMapOf<String, TypeSpec>()
+    private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>, basePack: String): Map<String, TypeSpec.Builder> {
+        val res = mutableMapOf<String, TypeSpec.Builder>()
         val paramBuiltIns = mapOf(
             Pair("bool", "Boolean"),
             Pair("string", "String"),
@@ -113,7 +129,7 @@ internal object ObjectsGenerator {
                 }
                 int.addFunction(f.build())
             }
-            res[objSpec.name] = int.build()
+            res[objSpec.name] = int
         }
 
         return res
