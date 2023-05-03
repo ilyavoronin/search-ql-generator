@@ -6,13 +6,13 @@ filter Archived: bool
 
 object Type: string
 
-object Project {
+source object Project {
 	id: Id [source]
 	name: Name [source]
-	feature: Feature [many, rev]
+	feature: Feature [many]
 	vcs_root: VcsRoot [many, rev]
 	archived: Archived
-    project: Project [many, rev]
+    ref project: Project [many, rev]
     build_conf: BuildConf [many, rev]
     template: Template [many, rev]
 }
@@ -28,9 +28,9 @@ interface CommonBuildConf {
 	feature: Feature [many]
 }
 
-object BuildConf: CommonBuildConf
+source object BuildConf: CommonBuildConf
 
-filter Dependency: CommonBuildConf {
+object Dependency->CommonBuildConf {
 	artifact: ArtifactDependency [many]
 	snapshot: SnapshotDependency
 }
@@ -44,6 +44,7 @@ filter SnapshotDependency : bool {
 }
 
 source object Template {
+	ref inheritedBy: BuildConf [rev, many]
 	id: Id [source]
 	name: Name [source]
 	trigger: Trigger [many]

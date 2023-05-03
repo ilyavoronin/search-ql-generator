@@ -49,7 +49,7 @@ class GeneratorScheme(astList: List<AST>) {
                         members.addAll(ast.members)
                         members.addAll(
                             if (ast.inheritedFrom!!.second) {
-                                additionalMembers.map { DefField(it.reference, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                                additionalMembers.map { DefField(true, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
                             } else {
                                 additionalMembers
                             })
@@ -67,7 +67,7 @@ class GeneratorScheme(astList: List<AST>) {
                         members.addAll(ast.members)
                         members.addAll(
                             if (ast.inheritedFrom!!.second) {
-                                additionalMembers.map { DefField(it.reference, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                                additionalMembers.map { DefField(true, it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
                             } else {
                                 additionalMembers
                             })
@@ -179,6 +179,7 @@ class ExtendedDefField(
     val parent: Definition?,
     defField: DefField,
 ) {
+    val reference: Boolean
     val memName: String
     val memType: String
     val modifiers: List<String>
@@ -187,6 +188,7 @@ class ExtendedDefField(
     val isSource: Boolean
 
     init {
+        reference = defField.reference
         memName = defField.memName
         memType = defField.memType
         modifiers = defField.modifiers

@@ -613,7 +613,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
         val paths = mutableListOf<PathExecutionNode>()
         for ((i, subObj) in currObj.members.withIndex()) {
-            if (used.contains(subObj.memType)) {
+            if (used.contains(subObj.memType) || subObj.reference) {
                 continue
             }
             val newObj = scheme.getDefinition(subObj.memType)!!

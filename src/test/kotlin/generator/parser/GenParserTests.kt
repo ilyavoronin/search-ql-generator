@@ -21,7 +21,7 @@ class GenParserTests {
             	feature: Feature [many, rev] (withInherited)
             	vcs_root: VcsRoot [many, rev]
             	archived: Archived
-                project: Project [many, rev]
+                ref project: Project [many, rev]
                 build_conf: BuildConf [many, rev]
                 template: Template [many, rev]
             } `abcd`
@@ -31,14 +31,14 @@ class GenParserTests {
 
         assertEquals(listOf(
             Object("Project", null, listOf(
-                DefField("id", "Id", listOf(), false, true, false),
-                DefField("name", "Name", listOf(), false, true, false),
-                DefField("feature", "Feature", listOf("withInherited"), true, false, true),
-                DefField("vcs_root", "VcsRoot", listOf(), true, false, true),
-                DefField("archived", "Archived", listOf(), false, false, false),
-                DefField("project", "Project", listOf(), true, false, true),
-                DefField("build_conf", "BuildConf", listOf(), true, false, true),
-                DefField("template", "Template", listOf(), true, false, true),
+                DefField(false, "id", "Id", listOf(), false, true, false),
+                DefField(false, "name", "Name", listOf(), false, true, false),
+                DefField(false, "feature", "Feature", listOf("withInherited"), true, false, true),
+                DefField(false, "vcs_root", "VcsRoot", listOf(), true, false, true),
+                DefField(false, "archived", "Archived", listOf(), false, false, false),
+                DefField(true, "project", "Project", listOf(), true, false, true),
+                DefField(false, "build_conf", "BuildConf", listOf(), true, false, true),
+                DefField(false, "template", "Template", listOf(), true, false, true),
             ), ShortCut("abcd"), true)
         ), res.unwrap())
     }
