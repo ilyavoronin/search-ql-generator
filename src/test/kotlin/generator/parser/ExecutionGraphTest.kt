@@ -2,6 +2,7 @@ package generator.parser
 
 import generator.exec.ExecutionGraph
 import generator.exec.GeneratedObjects
+import generator.exec.ObjectsSource
 import generator.lang.parser.getLangParser
 import generator.scheme.GeneratorScheme
 import generator.scheme.parser.astParser
@@ -63,7 +64,7 @@ class ExecutionGraphTest {
         val p = getLangParser(scheme)
         val res = p.parse(input.inp()).unwrap()
 
-        val graph = ExecutionGraph(scheme, GeneratedObjects(listOf(), listOf()), res)
+        val graph = ExecutionGraph(scheme, GeneratedObjects(object: ObjectsSource {}, listOf(), listOf()), res)
 
         var commonTriggerNode: ExecutionGraph.ExecutionNode
 

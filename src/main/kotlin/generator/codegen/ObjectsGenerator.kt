@@ -38,9 +38,12 @@ internal object ObjectsGenerator {
         }
 
         val fileBuiltIns = FileSpec.builder(pack, "builtins")
+            .addImport(basePack, "GeneratedObject")
+
         for (b in builtIns.values) {
             fileBuiltIns.addType(b)
         }
+
         val fileInt = FileSpec.builder(pack, "interfaces")
         for (int in interfaces.values) {
             fileInt.addType(int.build())
@@ -65,6 +68,8 @@ internal object ObjectsGenerator {
         val res = mutableMapOf<String, TypeSpec>()
         run {
             val b = TypeSpec.interfaceBuilder("BoolBuiltIn")
+                .addSuperinterface(TypeVariableName("GeneratedObject"))
+
             val f = FunSpec.builder("getBool")
                 .addModifiers(KModifier.ABSTRACT)
                 .returns(Boolean::class)
@@ -73,6 +78,8 @@ internal object ObjectsGenerator {
         }
         run {
             val b = TypeSpec.interfaceBuilder("StringBuiltIn")
+                .addSuperinterface(TypeVariableName("GeneratedObject"))
+
             val f = FunSpec.builder("getString")
                 .addModifiers(KModifier.ABSTRACT)
                 .returns(String::class)
@@ -81,6 +88,8 @@ internal object ObjectsGenerator {
         }
         run {
             val b = TypeSpec.interfaceBuilder("IntBuiltIn")
+                .addSuperinterface(TypeVariableName("GeneratedObject"))
+
             val f = FunSpec.builder("getInt")
                 .addModifiers(KModifier.ABSTRACT)
                 .returns(Int::class)
