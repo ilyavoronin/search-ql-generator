@@ -2,6 +2,7 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 
 class GeneratedObjects(
+    val source: ObjectsSource,
     objs: List<KClass<out GeneratedObject>>,
     filters: List<KClass<out GeneratedObject>>
 ) {
@@ -16,18 +17,27 @@ class GeneratedObjects(
     }
 
     fun getDefMethod(name: String, subObjName: String): KCallable<*> {
-        return defsClasses[name]!!.members.single { it.name == subObjName }
+        val methodName = "get${subObjName.capitalize()}"
+        return defsClasses[name]!!.members.single { it.name == methodName }
     }
 
     fun getRevDefMethod(name: String, revName: String): KCallable<*> {
-        return defsClasses[name]!!.members.single { it.name == revName }
+        val methodName = "parent${revName.capitalize()}"
+        return defsClasses[name]!!.members.single { it.name == methodName }
     }
 
     fun getAllObjectsOfType(t: String): List<GeneratedObject> {
-        return listOf()
+        val methodName = "getAll$t"
+        val method = ObjectsSource::class.members.single { it.name == methodName }
+
+        return method.call(source) as List<GeneratedObject>
     }
 
     fun getAllObjectsByProperty(obj: String, property: String, value: ValueObject): List<GeneratedObject> {
-        return listOf()
+        val methodName = "get${property.capitalize()}By${obj.capitalize()}"
+        val method = ObjectsSource::class.members.single { it.name == methodName }
+
+        return method.call(source, value) as List<GeneratedObject>
+
     }
 }

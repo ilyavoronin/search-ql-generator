@@ -96,6 +96,7 @@ internal object ExecGenerator {
             .addParameter("source", TypeVariableName.invoke("ObjectsSource"))
             .addCode("""
                 genObjects = GeneratedObjects(
+                    source,
                     listOf(${scheme.objects.joinToString(", ") { "%T::class" }}),
                     listOf(${scheme.filters.joinToString(", ") { "%T::class" }})
                 )

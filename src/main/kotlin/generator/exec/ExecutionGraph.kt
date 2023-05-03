@@ -182,7 +182,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         throw IllegalStateException()
                     }
 
-                    val kmethod = genObjects.getDefMethod(contextParent.parent!!.name, obj.name)
+                    val kmethod = genObjects.getDefMethod(contextParent.parent!!.name, contextParent.memName)
 
                     if (contextParent.isMany) {
                         PathExecutionResult( { obj, intersectWith ->
@@ -202,7 +202,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     return when (t) {
                         ExecType.FilterCalc -> {
                             val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent!!.name)
-                            val getMethod = genObjects.getDefMethod(contextParent.parent.name, obj.name)
+                            val getMethod = genObjects.getDefMethod(contextParent.parent.name, contextParent.memName)
                             val resObjs = res.objs?.map {
                                 // TODO filter by super-objects filters
                                 revMethod.call(it) as GeneratedObject
