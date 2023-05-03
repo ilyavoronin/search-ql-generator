@@ -77,13 +77,13 @@ internal object ExecGenerator {
         val astStr = astList.mapNotNull { ast ->
             val res = when (ast) {
                 is Object -> {
-                    "Object(\"${ast.name}\", ${ast.inheritedFrom?.let { "\"$it\""}}, ${genMembersList(ast.members)}, null, ${ast.source})"
+                    "Object(\"${ast.name}\", null, ${genMembersList(ast.members)}, null, ${ast.source})"
                 }
                 is Filter -> {
-                    "Filter(\"${ast.name}\", ${ast.inheritedFrom?.let { "\"$it\""}}, ${genMembersList(ast.members)}, null)"
+                    "Filter(\"${ast.name}\", null, ${genMembersList(ast.members)}, null)"
                 }
                 is Interface -> {
-                    "Interface(\"${ast.name}\", ${ast.inheritedFrom?.let { "\"$it\""}}, ${genMembersList(ast.members)})"
+                    null
                 }
                 is Modifier -> {
                     null

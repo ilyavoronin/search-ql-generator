@@ -84,8 +84,8 @@ internal object ObjectsGenerator {
 
         for (objSpec in filterSpecs) {
             val int = TypeSpec.interfaceBuilder(objSpec.name)
-            objSpec.inheritedFrom?.let {
-                int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[it]?.name ?: it))
+            objSpec.inheritedFrom?.let {(inhFrom, _) ->
+                int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[inhFrom]?.name ?: inhFrom))
             }
             int.addSuperinterface(ClassName(basePack, "GeneratedObject"))
 

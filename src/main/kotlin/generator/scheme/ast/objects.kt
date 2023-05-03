@@ -4,7 +4,7 @@ sealed class AST
 
 sealed class Definition: AST() {
     abstract val name: String
-    abstract val inheritedFrom: String?
+    abstract val inheritedFrom: Pair<String, Boolean>?
     abstract val members: List<DefField>
 }
 
@@ -22,7 +22,7 @@ data class Modifier(val name: String, val type: ModValueType): AST()
 
 data class Object(
     override val name: String,
-    override val inheritedFrom: String?,
+    override val inheritedFrom: Pair<String, Boolean>?,
     override val members: List<DefField>,
     override val shortCut: ShortCut?,
     val source: Boolean
@@ -30,13 +30,13 @@ data class Object(
 
 data class Interface(
     override val name: String,
-    override val inheritedFrom: String?,
+    override val inheritedFrom: Pair<String, Boolean>?,
     override val members: List<DefField>,
 ): Definition()
 
 data class Filter(
     override val name: String,
-    override val inheritedFrom: String?,
+    override val inheritedFrom: Pair<String, Boolean>?,
     override val members: List<DefField>,
     override val shortCut: ShortCut?,
 ): Accessible()

@@ -18,8 +18,13 @@ private val objectParser = combine {
     val source = token("source").br()(it).isOk()
     token("object").br()[it]
     val name = parseVar.s()[it]
-    token(":").s()[it]
-    val inheritedFrom = parseVar.b()[it]
+    val inheritedFrom = (combine {
+        token(":").s()[it]
+        Pair(parseVar.b()[it], false)
+    } / combine {
+        token("->").s()[it]
+        Pair(parseVar.b()[it], true)
+    })[it]
 
     Object(name, inheritedFrom, listOf(), null, source)
 })
@@ -34,8 +39,13 @@ private val filterParser = combine {
     blank.many()[it]
     token("filter").br()[it]
     val name = parseVar.s()[it]
-    token(":").s()[it]
-    val inheritedFrom = parseVar.b()[it]
+    val inheritedFrom = (combine {
+        token(":").s()[it]
+        Pair(parseVar.b()[it], false)
+    } / combine {
+        token("->").s()[it]
+        Pair(parseVar.b()[it], true)
+    })[it]
 
     Filter(name, inheritedFrom, listOf(), null)
 })
@@ -85,10 +95,14 @@ val astParser: Parser<List<AST>> = (modifierParser.or(defParser)).many().end()
 
 private val defBodyParser = combine {
     val name = parseVar.b()[it]
-    val inheritedFrom = combine {
+    val inheritedInfo = (combine {
         token(":").b()[it]
-        parseVar[it]
-    }.blank()(it)
+        Pair(parseVar[it], false)
+    } / combine {
+        token("->").b()[it]
+        Pair(parseVar[it], true)
+    })
+        .blank()(it)
     token("{").nl()[it]
     val fields = fieldParser.atLeast(1)[it]
     blank.many()[it]
@@ -103,7 +117,7 @@ private val defBodyParser = combine {
         sc
     }(it).unwrapOrNull()?.let { ShortCut(it) }
 
-    Triple(name, inheritedFrom, Pair(fields, sc))
+    Triple(name, inheritedInfo, Pair(fields, sc))
 }
 
 private val fieldParser = combine {

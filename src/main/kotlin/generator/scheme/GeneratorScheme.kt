@@ -35,8 +35,8 @@ class GeneratorScheme(astList: List<AST>) {
         }
 
         val astList2 = astList.map { ast ->
-            val additionalMembers = if (ast is Accessible && ast.inheritedFrom != null && ast.inheritedFrom !in listOf("string", "int", "bool")) {
-                interfaceMap[ast.inheritedFrom]!!.members.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, it.isSource, it.isRev, true) }
+            val additionalMembers = if (ast is Accessible && ast.inheritedFrom != null && ast.inheritedFrom!!.first !in listOf("string", "int", "bool")) {
+                interfaceMap[ast.inheritedFrom!!.first]!!.members.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, it.isSource, it.isRev, true) }
             } else {
                 null
             }
@@ -47,8 +47,13 @@ class GeneratorScheme(astList: List<AST>) {
                     } else {
                         val members = mutableListOf<DefField>()
                         members.addAll(ast.members)
-                        members.addAll(additionalMembers)
-                        Object(ast.name, ast.inheritedFrom, members, ast.shortCut, ast.source)
+                        members.addAll(
+                            if (ast.inheritedFrom!!.second) {
+                                additionalMembers.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                            } else {
+                                additionalMembers
+                            })
+                        Object(ast.name, null, members, ast.shortCut, ast.source)
                     }
                     objs.add(ast)
                     objsMap[ast.name] = ast
@@ -60,8 +65,13 @@ class GeneratorScheme(astList: List<AST>) {
                     } else {
                         val members = mutableListOf<DefField>()
                         members.addAll(ast.members)
-                        members.addAll(additionalMembers)
-                        Filter(ast.name, ast.inheritedFrom, members, ast.shortCut)
+                        members.addAll(
+                            if (ast.inheritedFrom!!.second) {
+                                additionalMembers.map { DefField(it.memName, it.memType, it.modifiers, it.isMany, false, false, it.inherited) }
+                            } else {
+                                additionalMembers
+                            })
+                        Filter(ast.name, null, members, ast.shortCut)
                     }
                     fs.add(ast)
                     objsMap[ast.name] = ast
