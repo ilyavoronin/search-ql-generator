@@ -4,10 +4,7 @@ import generator.GeneratedObject
 import generator.lang.ast.*
 import generator.scheme.ExtendedDefField
 import generator.scheme.GeneratorScheme
-import generator.scheme.ast.DefField
-import generator.scheme.ast.Definition
-import generator.scheme.ast.Filter
-import generator.scheme.ast.Object
+import generator.scheme.ast.*
 import java.lang.IllegalStateException
 import kotlin.reflect.KCallable
 
@@ -62,6 +59,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
         } else {
             PathSubExecNode(sobj,
                 ExtendedDefField(),
+                mapOf(),
                 buildCondGraph(sobj, findQuery.withCond!!),
                 null,
                 listOf()
@@ -176,7 +174,12 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
         }
     }
 
-    data class RootPathElem(val nodeId: Int, val method: KCallable<*>?)
+    data class RootPathElem(
+        val nodeId: Int,
+        val method: GeneratedObjects.GetRevMethod?,
+        val extField: ExtendedDefField,
+        val modifiers: Map<String, ModValueType>,
+    )
 
     private fun interface SeqObjFilter {
         fun filterAndAscend(obj: GeneratedObject): Set<GeneratedObject>
@@ -194,7 +197,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             finalFilter = SeqObjFilter {obj ->
                 copyFinalFilter.filterAndAscend(obj).flatMap {obj ->
                     if (calculatedRes.objFilter == null && calculatedRes.objs == null || calculatedRes.objs?.contains(obj) == true || calculatedRes.objFilter?.accepts(obj) == true) {
-                        (filterInfo.method?.call(obj) ?: listOf(obj)) as List<GeneratedObject>
+                        (filterInfo.method?.call(obj, filterInfo.extField, filterInfo.modifiers) ?: listOf(obj)) as List<GeneratedObject>
                     } else {
                         emptySet()
                     }
@@ -208,6 +211,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
     inner class PathSubExecNode(
         val obj: Definition,
         val contextParent: ExtendedDefField,
+        val modifiers: Map<String, ModValueType>,
         val cond: ObjCondExecutionNode?,
         val subPath: PathExecutionNode?,
         val rootPath: List<RootPathElem>?
@@ -228,12 +232,12 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
                     if (!contextParent.isMany) {
                         PathExecutionResult( { obj, intersectWith ->
-                            val res = kmethod.call(obj)
+                            val res = kmethod.call(obj, contextParent, modifiers)
                             setOf(res as GeneratedObject)
                         }, setOf())
                     } else {
                         PathExecutionResult( { obj, intersectWith ->
-                            val res = kmethod.call(obj) as List<GeneratedObject>
+                            val res = kmethod.call(obj, contextParent, modifiers) as List<GeneratedObject>
                             res.toSet()
                         }, setOf())
                     }
@@ -247,7 +251,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                             val resObjs = res.objs?.let { filterObjectsBottomUp(it, rootPath!!)}
                             val resRetr = if (res.objFilter != null) {
                                 ObjRetriever { obj, intersectWith ->
-                                    val subObj = getMethod.call(obj)
+                                    val subObj = getMethod.call(obj, contextParent, modifiers)
                                     var subObjs: List<GeneratedObject>
                                     if (contextParent.isMany) {
                                         subObjs = subObj as List<GeneratedObject>
@@ -295,13 +299,13 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     val res = getChildResult(0) as PathExecutionResult
                     return when (t) {
                         ExecType.FilterCalc -> {
-                            val subGet = genObjects.getDefMethod(contextParent.memType, contextParent.memName)
+                            val subGet = genObjects.getDefMethod(contextParent.parent!!.name, contextParent.memName)
                             val newRet = res.objRetriever?.let { ret ->
                                 ObjRetriever {obj, intersectWith ->
                                     val objs = if (contextParent.isMany) {
-                                        subGet.call(obj) as List<GeneratedObject>
+                                        subGet.call(obj, contextParent, modifiers) as List<GeneratedObject>
                                     } else {
-                                        listOf(subGet.call(obj) as GeneratedObject)
+                                        listOf(subGet.call(obj, contextParent, modifiers) as GeneratedObject)
                                     }
                                     val res = mutableSetOf<GeneratedObject>()
                                     objs.forEach {obj -> res.addAll(ret.retrieve(obj, intersectWith))}
@@ -343,9 +347,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                             val finalRet = resCond.objFilter?.let { filter -> resPath.objRetriever?.let { ret ->
                                 ObjRetriever { obj, intersectWith ->
                                     val objs = if (contextParent.isMany) {
-                                        getSub.call(obj) as List<GeneratedObject>
+                                        getSub.call(obj, contextParent, modifiers) as List<GeneratedObject>
                                     } else {
-                                        listOf(getSub.call(obj) as GeneratedObject)
+                                        listOf(getSub.call(obj, contextParent, modifiers) as GeneratedObject)
                                     }
 
                                     objs.filter { filter.accepts(it) }.flatMap { ret.retrieve(it, intersectWith) }.toSet()
@@ -457,7 +461,12 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
         }
     }
 
-    inner class ObjSubObjExecNode(val obj: Definition, val extendedDefField: ExtendedDefField,  cond: ObjCondExecutionNode) : ObjCondExecutionNode() {
+    inner class ObjSubObjExecNode(
+        val obj: Definition,
+        val extendedDefField: ExtendedDefField,
+        val modifiers: Map<String, ModValueType>,
+        cond: ObjCondExecutionNode
+    ) : ObjCondExecutionNode() {
         init {
             addChild(cond)
         }
@@ -469,15 +478,15 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     val getMethod = genObjects.getDefMethod(extendedDefField.parent!!.name, extendedDefField.memName)
                     val objs = res.objs?.let { objs ->
                         val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent.name)
-                        objs.flatMap { revMethod.call(obj) as List<GeneratedObject> }
+                        objs.flatMap { revMethod.call(it, extendedDefField, modifiers) as List<GeneratedObject> }
                     }
 
                     val objFilter = res.objFilter?.let { filter ->
                         ObjFilter { obj ->
                             val objs = if (extendedDefField.isMany) {
-                                getMethod.call(obj) as List<GeneratedObject>
+                                getMethod.call(obj, extendedDefField, modifiers) as List<GeneratedObject>
                             } else {
-                                listOf(getMethod.call(obj) as GeneratedObject)
+                                listOf(getMethod.call(obj, extendedDefField, modifiers) as GeneratedObject)
                             }
 
                             objs.any { filter.accepts(it) }
@@ -492,7 +501,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent!!.name)
                         val objs = genObjects.getAllObjectsOfType(obj.name)
                             .filter { res.objFilter.accepts(it) }
-                            .flatMap { revMethod.call(it) as List<GeneratedObject> }
+                            .flatMap { revMethod.call(it, extendedDefField, modifiers) as List<GeneratedObject> }
                             .toSet()
 
                         resObjs.addAll(objs)
@@ -599,12 +608,14 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                 newRootPath?.add(
                     RootPathElem(
                         currObjCond?.id ?: -1,
-                        defField.parent?.let { genObjects.getRevDefMethod(defField.memType, it.name) }
+                        defField.parent?.let { genObjects.getRevDefMethod(defField.memType, it.name) },
+                        defField,
+                        cond.modifiers
                     )
                 )
 
                 var currPathCond = cond.subObjPath?.let { buildPathGraph(it, newObj, sobjDef, newAddObjCond, newRootPath) }
-                currPathCond = currPathCond?.let { PathSubExecNode(newObj, defField, currObjCond, it, newRootPath)}
+                currPathCond = currPathCond?.let { PathSubExecNode(newObj, defField, cond.modifiers, currObjCond, it, newRootPath)}
 
                 if (currPathCond == null) {
                     val used = mutableSetOf<String>()
@@ -650,7 +661,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             }
             is SubObjSearch -> {
                 val (newObj, defField) = scheme.getSubObj(currObj, objCond.objType)!!
-                return ObjSubObjExecNode(newObj, defField, buildCondGraph(newObj, objCond.objCond))
+                return ObjSubObjExecNode(newObj, defField, objCond.modifiers, buildCondGraph(newObj, objCond.objCond))
             }
         }
     }
@@ -665,7 +676,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
         currPathToRoot: List<RootPathElem>?
     ): PathExecutionNode? {
         if (currObj.name == sobj.name) {
-            return PathSubExecNode(sobj, parentObjField, newAddObjCond, null, currPathToRoot)
+            return PathSubExecNode(sobj, parentObjField, mapOf(), newAddObjCond, null, currPathToRoot)
         }
 
         val paths = mutableListOf<PathExecutionNode>()
@@ -687,7 +698,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             newPathToRoot?.add(
                 RootPathElem(
                     -1,
-                    parentObjField.parent?.let {(genObjects.getRevDefMethod(subObj.memType, currObj.name))}
+                    parentObjField.parent?.let {(genObjects.getRevDefMethod(subObj.memType, currObj.name))},
+                    parentObjField,
+                    mapOf()
                 )
             )
             val pathCond = buildPathToSobj(sobj, newObj, ExtendedDefField(currObj, subObj), newAddObjCond, null, used, newPathToRoot)
@@ -701,6 +714,6 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             return null
         }
 
-        return PathSubExecNode(currObj, parentObjField, currObjCond, paths.reduce {acc, a -> PathOrExecutionNode(acc, a)}, currPathToRoot)
+        return PathSubExecNode(currObj, parentObjField, mapOf(), currObjCond, paths.reduce {acc, a -> PathOrExecutionNode(acc, a)}, currPathToRoot)
     }
 }

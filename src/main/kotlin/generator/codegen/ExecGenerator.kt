@@ -25,7 +25,7 @@ internal object ExecGenerator {
 
         val execEngine = genExecutionEngine(scheme, basePack)
         FileSpec.builder(pack, "ExecEngine.kt")
-            .addImport(joinPackages(basePack, "scheme"), "GeneratorScheme", "Object", "Filter", "Interface", "DefField")
+            .addImport(joinPackages(basePack, "scheme"), "GeneratorScheme", "Object", "Filter", "Interface", "Modifier", "DefField", "ModValueType")
             .addImport(joinPackages(basePack, "parser", "lang"), "FindQuery", "getLangParser")
             .addImport(joinPackages(basePack, "parser", "utils"), "inp")
             .addImport(basePack, "GeneratedObject")
@@ -38,11 +38,15 @@ internal object ExecGenerator {
         saveFileWithPackage("exec", "ExecType.kt")
 
         saveFileWithPackage("exec" ,"GeneratedObjects.kt",
-            joinPackages(basePack, "GeneratedObject")
+            joinPackages(basePack, "GeneratedObject"),
+            joinPackages(basePack, "scheme", "ExtendedDefField"),
+            joinPackages(basePack, "scheme", "GeneratorScheme"),
+            joinPackages(basePack, "scheme", "ModValueType")
         )
 
         saveFileWithPackage("exec", "FixedBottomUpExecOrder.kt",
-            joinPackages(basePack, "scheme", "Definition")
+            joinPackages(basePack, "scheme", "Definition"),
+            joinPackages(basePack, "scheme", "GeneratorScheme")
         )
 
 
@@ -71,7 +75,7 @@ internal object ExecGenerator {
 
         fun genMembersList(m: List<DefField>): String {
             val l = m.joinToString(",") { def ->
-                "DefField(${def.reference}, \"${def.memName}\", \"${def.memType}\", listOf(${def.modifiers.joinToString { "\"it\"" }}), ${def.isMany}, ${def.isSource}, ${def.isRev})"
+                "DefField(${def.reference}, \"${def.memName}\", \"${def.memType}\", listOf(${def.modifiers.joinToString { "\"$it\"" }}), ${def.isMany}, ${def.isSource}, ${def.isRev})"
             }
             return "listOf($l)"
         }
@@ -89,7 +93,14 @@ internal object ExecGenerator {
                     "Interface(\"${ast.name}\", null, ${genMembersList(ast.members)})"
                 }
                 is Modifier -> {
-                    null
+                    val t = ast.type
+                    "Modifier(\"${ast.name}\", ${
+                        when(t) {
+                            is ModValueType.Bool -> "ModValueType.Bool(${t.v})"
+                            is ModValueType.Int -> "ModValueType.Int(${t.v})"
+                            is ModValueType.String -> "ModValueType.String(\"${t.v}\")"
+                        }
+                    }, ${ast.revAllowed})"
                 }
             }
             res
@@ -97,15 +108,15 @@ internal object ExecGenerator {
 
         val constructor = FunSpec.constructorBuilder()
             .addParameter("source", TypeVariableName.invoke("ObjectsSource"))
-            .addCode("""
+            .addCode("""                
+                scheme = GeneratorScheme(listOf($astStr))
+                parser = getLangParser(scheme)
                 genObjects = GeneratedObjects(
                     source,
+                    scheme,
                     listOf(${scheme.objects.joinToString(", ") { "%T::class" }}),
                     listOf(${scheme.filters.joinToString(", ") { "%T::class" }})
                 )
-                
-                scheme = GeneratorScheme(listOf($astStr))
-                parser = getLangParser(scheme)
             """.trimIndent(),
                 *((scheme.objects.asSequence() + scheme.filters.asSequence())
                     .map { ClassName(joinPackages(pack, "objects"), it.name) }
@@ -135,7 +146,7 @@ internal object ExecGenerator {
                     """
                         val fquery = parser.parse(query.inp()).unwrap()
                         val execGraph = ExecutionGraph(scheme, genObjects, fquery)
-                        return execGraph.execute(FixedBottomUpExecOrder())
+                        return execGraph.execute(FixedBottomUpExecOrder(scheme))
                     """.trimIndent()
                 )
                 .build()

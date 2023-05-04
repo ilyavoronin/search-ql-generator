@@ -27,8 +27,8 @@ class LangParserTests {
         val res = p.parse(input.inp())
         assertEquals(FindQuery(
             "trigger",
-            SubObjPath("buildConf", null, null, null),
-            SubObjSearch("type", StringObjCond("scheduled"))
+            SubObjPath("buildConf", null, null, null, mapOf()),
+            SubObjSearch("type", StringObjCond("scheduled"), mapOf())
         ), res.unwrap())
     }
 
@@ -47,10 +47,10 @@ class LangParserTests {
             "project",
             null,
             AndObjCond(
-                SubObjSearch("name", StringObjCond("abacaba")),
+                SubObjSearch("name", StringObjCond("abacaba"), mapOf()),
                 OrObjCond(
-                    SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"))),
-                    NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"))))
+                    SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"), mapOf()), mapOf()),
+                    NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"), mapOf()), mapOf()))
                 )
             )
         ), res.unwrap())
@@ -95,25 +95,27 @@ class LangParserTests {
             OrObjPath(
                 SubObjPath("project",
                     AndObjCond(
-                        SubObjSearch("name", StringObjCond("abacaba")),
+                        SubObjSearch("name", StringObjCond("abacaba"), mapOf()),
                         OrObjCond(
-                            SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"))),
-                            NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"))))
+                            SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T1"), mapOf()), mapOf()),
+                            NotObjCond(SubObjSearch("build_conf", SubObjSearch("name", StringObjCond("T2"), mapOf()), mapOf()))
                         )
                     ),
                     AndObjPath(
-                        SubObjPath("build_conf", SubObjSearch("name", StringObjCond("abacaba")), null, null),
-                        SubObjPath("template", SubObjSearch("id", StringObjCond("qwerty")), null, null)
+                        SubObjPath("build_conf", SubObjSearch("name", StringObjCond("abacaba"), mapOf()), null, null, mapOf()),
+                        SubObjPath("template", SubObjSearch("id", StringObjCond("qwerty"), mapOf()), null, null, mapOf())
                     ),
-                    SubObjSearch("type", StringObjCond("1"))
+                    SubObjSearch("type", StringObjCond("1"), mapOf()),
+                    mapOf()
                 ),
                 SubObjPath("project",
-                    SubObjSearch("name", StringObjCond("aba2")),
+                    SubObjSearch("name", StringObjCond("aba2"), mapOf()),
                     null,
-                    SubObjSearch("type", StringObjCond("2"))
+                    SubObjSearch("type", StringObjCond("2"), mapOf()),
+                    mapOf()
                 )
             ),
-            SubObjSearch("type", StringObjCond("scheduled"))
+            SubObjSearch("type", StringObjCond("scheduled"), mapOf())
         ), res.unwrap())
     }
 }

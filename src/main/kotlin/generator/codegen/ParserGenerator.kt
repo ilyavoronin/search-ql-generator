@@ -18,7 +18,9 @@ internal object ParserGenerator {
         saveFileWithPackage("parser", "Parser.kt", utilsPack)
         saveFileWithPackage("parser", "Result.kt", utilsPack)
 
-        saveFileWithPackage("lang", "objects.kt", langPack)
+        saveFileWithPackage("lang", "objects.kt", langPack,
+            joinPackages(basePack, "scheme", "ModValueType")
+        )
         saveFileWithPackage("lang", "parsers.kt", langPack,
             joinPackages(utilsPack, "*"),
             joinPackages(basePack, "scheme", "*")

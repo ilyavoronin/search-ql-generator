@@ -1,9 +1,9 @@
 package generator.lang.parser
 
 import generator.lang.ast.*
+import generator.scheme.ExtendedDefField
 import generator.scheme.GeneratorScheme
-import generator.scheme.ast.Definition
-import generator.scheme.ast.Filter
+import generator.scheme.ast.*
 import parser.*
 
 private val parseVar = parseTokenWhile { it.isLetterOrDigit() || it in listOf('_') }
@@ -69,15 +69,26 @@ private fun combine<*>.validatePathCond(obj: Definition?, sobj: Definition, cond
             validatePathCond(obj, sobj, cond.r, scheme)
         }
         is SubObjPath -> {
-            val subObj = if (obj == null) {
-                scheme.getDefinition(cond.objType.capitalize()) ?: err("unknown object type ${cond.objType}", 0)
+            val (subObj, field) = if (obj == null) {
+                Pair(
+                    scheme.getDefinition(cond.objType.capitalize()) ?: err("unknown object type ${cond.objType}", 0),
+                    null
+                )
             } else {
                 val subObjInfo = scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
                 if (subObjInfo.second.reference) {
                     err("subobject of type ${cond.objType} is referenced by ${obj.name} so it cannot be used in path condition", 0)
                 }
-                subObjInfo.first
+                subObjInfo
             }
+
+            if (cond.modifiers.isNotEmpty()) {
+                if (obj == null) {
+                    err("toplevel object(${subObj.name} can't have modifiers", 0)
+                }
+                validateModifiers(obj, field!!, cond.modifiers, scheme)
+            }
+
             if (cond.subObjPath != null) {
                 validatePathCond(subObj, sobj, cond.subObjPath, scheme)
             } else {
@@ -125,11 +136,68 @@ private fun combine<*>.validateObjCond(obj: Definition, cond: ObjCondition, sche
             }
         }
         is SubObjSearch -> {
-            val subObj = scheme.getSubObj(obj, cond.objType)?.first ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+
+            val (subObj, field) = scheme.getSubObj(obj, cond.objType) ?: err("unknown subobject name ${cond.objType} for object ${obj.name}", 0)
+            validateModifiers(obj, field, cond.modifiers, scheme)
             validateObjCond(subObj, cond.objCond, scheme)
         }
     }
 }
+
+private fun combine<*>.validateModifiers(obj: Definition, field: ExtendedDefField, mods: Map<String, ModValueType>, scheme: GeneratorScheme) {
+    val allowed = field.modifiers.toSet()
+
+    for ((name, v) in mods) {
+        val mod = scheme.getModifier(name) ?: err("modifier '${name}' doesn't exist", 0)
+        if (!allowed.contains(name)) {
+            err("${obj.name} field ${field.memName} does not have '${name}' modifier", 0)
+        }
+
+        when (mod.type) {
+            is ModValueType.Int -> {
+                if (v !is ModValueType.Int) {
+                    err("$name modifier should have int type", 0)
+                }
+            }
+            is ModValueType.Bool -> {
+                if (v !is ModValueType.Bool) {
+                    err("$name modifier should have bool type", 0)
+                }
+            }
+            is ModValueType.String -> {
+                if (v !is ModValueType.String) {
+                    err("$name should have string type", 0)
+                }
+            }
+        }
+    }
+}
+
+private val modifierParser =
+    combine<Pair<String, ModValueType>>{
+        val name = parseVar.b()[it]
+        token("(").b()[it]
+        token("\"")[it]
+        val v = parseTokenWhile { it != '"' }[it]
+        token("\"").b()[it]
+        Pair(name, ModValueType.String(v))
+    } /
+    combine {
+        val name = parseVar.b()[it]
+        token("(").b()[it]
+        val v = parseTokenWhile { it.isDigit() }.map { it.toInt() } [it]
+        token(")").b()[it]
+        Pair(name, ModValueType.Int(v))
+    } /
+    combine {
+        token("!")[it]
+        val name = parseVar.b()[it]
+        Pair(name, ModValueType.Bool(false))
+    } /
+    combine {
+        val name = parseVar.b()[it]
+        Pair(name, ModValueType.Bool(true))
+    }
 
 private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Parser<ObjCondition>): Parser<PathCondition> {
     val objCond = combine {
@@ -140,6 +208,7 @@ private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Pars
     } /
     combine {
         val subObjType = parseVar.b()[it]
+        val modifiers = parseList(modifierParser, "[", "]", ",").b()(it).unwrapOrNull()?.toMap() ?: mapOf()
         val subObjCond = combine {
             token("(").b()[it]
             val subObjCond = condParser[it]
@@ -161,7 +230,7 @@ private fun getSubGraphParser(topParser: Parser<PathCondition>, condParser: Pars
             token("}").b()[it]
             res
         }(it).unwrapOrNull()
-        SubObjPath(subObjType, subObjCond, subGraphCond, additionalSobjCond)
+        SubObjPath(subObjType, subObjCond, subGraphCond, additionalSobjCond, modifiers)
     }
 
     return objCond
@@ -211,10 +280,11 @@ private fun getSubExpParser(topParser: Parser<ObjCondition>): Parser<ObjConditio
     } /
     combine {
         val subObjType = parseVar.b()[it]
+        val modifiers = parseList(modifierParser, "[", "]", ",").b()(it).unwrapOrNull()?.toMap() ?: mapOf()
         token("(").b()[it]
         val subObjCond = topParser[it]
         token(")").b()[it]
-        SubObjSearch(subObjType, subObjCond)
+        SubObjSearch(subObjType, subObjCond, modifiers)
     } /
     combine {
         val num = parseTokenWhile { it.isDigit() }[it]

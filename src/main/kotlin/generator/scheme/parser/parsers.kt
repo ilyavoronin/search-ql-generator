@@ -62,6 +62,7 @@ private val defParser: Parser<Definition> = objectParser.or(filterParser).or(int
 
 private val modifierParser: Parser<Modifier> = combine {
     blank.many()[it]
+    val revAllowed = token("rev").br()(it).isOk()
     token("modifier").br()[it]
     val name = parseVar.b()[it]
     token(":").b()[it]
@@ -87,7 +88,7 @@ private val modifierParser: Parser<Modifier> = combine {
     blank.many()[it]
     token(")").b()[it]
 
-    Modifier(name, typeAndDefaultValue)
+    Modifier(name, typeAndDefaultValue, revAllowed)
 }
 
 val astParser: Parser<List<AST>> = (modifierParser.or(defParser)).many().end()

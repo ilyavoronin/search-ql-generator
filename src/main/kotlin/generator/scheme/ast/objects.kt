@@ -14,11 +14,24 @@ sealed class Accessible: Definition() {
 
 
 sealed class ModValueType(val typeStr: kotlin.String) {
-    class Bool(v: Boolean): ModValueType("kotlin.Boolean")
-    class Int(v: kotlin.Int): ModValueType("kotlin.Int")
-    class String(v: kotlin.String): ModValueType("kotlin.String")
+    fun getValue(): Any {
+        return when (this) {
+            is Bool -> {
+                this.v
+            }
+            is String -> {
+                this.v
+            }
+            is Int -> {
+                this.v
+            }
+        }
+    }
+    class Bool(val v: Boolean): ModValueType("kotlin.Boolean")
+    class Int(val v: kotlin.Int): ModValueType("kotlin.Int")
+    class String(val v: kotlin.String): ModValueType("kotlin.String")
 }
-data class Modifier(val name: String, val type: ModValueType): AST()
+data class Modifier(val name: String, val type: ModValueType, val revAllowed: Boolean): AST()
 
 data class Object(
     override val name: String,

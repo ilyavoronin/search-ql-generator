@@ -1,5 +1,6 @@
 package generator.parser
 
+import generator.GeneratedObject
 import generator.exec.ExecutionGraph
 import generator.exec.GeneratedObjects
 import generator.exec.ObjectsSource
@@ -64,7 +65,7 @@ class ExecutionGraphTest {
         val p = getLangParser(scheme)
         val res = p.parse(input.inp()).unwrap()
 
-        val graph = ExecutionGraph(scheme, GeneratedObjects(object: ObjectsSource {}, listOf(), listOf()), res)
+        val graph = ExecutionGraph(scheme, GeneratedObjects(object: ObjectsSource {}, scheme, listOf(BuildConf::class, Template::class), listOf()), res)
 
         var commonTriggerNode: ExecutionGraph.ExecutionNode
 
@@ -219,5 +220,13 @@ class ExecutionGraphTest {
         assertEquals("Type", node.obj.name)
 
         assertNode(0, ExecutionGraph.ObjStringExecNode::class, commonTriggerNode.getChildren()[0], 0)
+    }
+
+    class BuildConf: GeneratedObject {
+        fun parentProject() {}
+    }
+
+    class Template: GeneratedObject {
+        fun parentProject() {}
     }
 }

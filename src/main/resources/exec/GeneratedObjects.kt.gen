@@ -2,10 +2,51 @@ import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 
 class GeneratedObjects(
-    val source: ObjectsSource,
+    private val source: ObjectsSource,
+    private val scheme: GeneratorScheme,
     objs: List<KClass<out GeneratedObject>>,
     filters: List<KClass<out GeneratedObject>>
 ) {
+    class GetObjectMethod(
+        private val scheme: GeneratorScheme,
+        private val get: KCallable<*>
+    ) {
+        fun call(obj: GeneratedObject, field: ExtendedDefField, modifiers: Map<String, ModValueType>): Any? {
+            val mods = field.modifiers.map {
+                if (modifiers.containsKey(it)) {
+                    modifiers[it]!!.getValue()
+                } else {
+                    scheme.getModifier(it)!!.type.getValue()
+                }
+            }.toTypedArray()
+            return get.call(obj, *mods)
+        }
+    }
+
+    class GetRevMethod(
+        private val scheme: GeneratorScheme,
+        private val get: KCallable<*>,
+    ) {
+        fun call(obj: GeneratedObject, field: ExtendedDefField, modifiers: Map<String, ModValueType>): Any? {
+            val mods = field.modifiers.mapNotNull {
+                val mod = scheme.getModifier(it)!!
+                if (mod.revAllowed) {
+                    if (modifiers.containsKey(it)) {
+                        modifiers[it]!!.getValue()
+                    } else {
+                        scheme.getModifier(it)!!.type.getValue()
+                    }
+                } else {
+                    if (modifiers.containsKey(mod.name)) {
+                        throw IllegalStateException()
+                    }
+                    null
+                }
+            }.toTypedArray()
+            return get.call(obj, *mods)
+        }
+    }
+
     private val defsClasses = mutableMapOf<String, KClass<*>>()
     init {
         objs.forEach { defsClasses[it.simpleName.toString()] = it }
@@ -16,14 +57,14 @@ class GeneratedObjects(
         return defsClasses[name]!!
     }
 
-    fun getDefMethod(name: String, subObjName: String): KCallable<*> {
+    fun getDefMethod(name: String, subObjName: String): GetObjectMethod {
         val methodName = "get${subObjName.capitalize()}"
-        return defsClasses[name]!!.members.single { it.name == methodName }
+        return GetObjectMethod(scheme, defsClasses[name]!!.members.single { it.name == methodName })
     }
 
-    fun getRevDefMethod(name: String, revName: String): KCallable<*> {
+    fun getRevDefMethod(name: String, revName: String): GetRevMethod {
         val methodName = "parent${revName.capitalize()}"
-        return defsClasses[name]!!.members.single { it.name == methodName }
+        return GetRevMethod(scheme, defsClasses[name]!!.members.single { it.name == methodName })
     }
 
     fun getAllObjectsOfType(t: String): List<GeneratedObject> {

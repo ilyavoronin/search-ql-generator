@@ -32,6 +32,13 @@ internal object ObjectsGenerator {
                        .addModifiers(KModifier.ABSTRACT)
                        .returns(listType.parameterizedBy(TypeVariableName.invoke(it.name)))
 
+                   for (modStr in field.modifiers) {
+                       val mod = scheme.getModifier(modStr)!!
+                       if (mod.revAllowed) {
+                           frev.addParameter(mod.name, TypeVariableName.invoke(mod.type.typeStr))
+                       }
+                   }
+
                    parent.addFunction(frev.build())
                }
            }
