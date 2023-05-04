@@ -82,15 +82,27 @@ internal object ExecGenerator {
         val astStr = astList.mapNotNull { ast ->
             val res = when (ast) {
                 is Object -> {
-                    val inhertiedString = ast.inheritedFrom?.let { "Pair(\"${it.first}\", ${it.second})" } ?: "null"
+                    val inhertiedString = ast.inheritedFrom?.let {
+                        if (it.first in listOf("string", "int", "bool")) {
+                            "Pair(\"${it.first}\", ${it.second})"
+                        } else {
+                            "null"
+                        }
+                    } ?: "null"
                     "Object(\"${ast.name}\", $inhertiedString, ${genMembersList(ast.members)}, null, ${ast.source})"
                 }
                 is Filter -> {
-                    val inhertiedString = ast.inheritedFrom?.let { "Pair(\"${it.first}\", ${it.second})" } ?: "null"
+                    val inhertiedString = ast.inheritedFrom?.let {
+                        if (it.first in listOf("string", "int", "bool")) {
+                            "Pair(\"${it.first}\", ${it.second})"
+                        } else {
+                            "null"
+                        }
+                    } ?: "null"
                     "Filter(\"${ast.name}\", $inhertiedString, ${genMembersList(ast.members)}, null)"
                 }
                 is Interface -> {
-                    "Interface(\"${ast.name}\", null, ${genMembersList(ast.members)})"
+                    null
                 }
                 is Modifier -> {
                     val t = ast.type

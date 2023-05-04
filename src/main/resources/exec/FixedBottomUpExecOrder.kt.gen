@@ -33,16 +33,11 @@ class FixedBottomUpExecOrder(val scheme: GeneratorScheme) : ExecutionOrder {
             }
             is ExecutionGraph.PathSubExecNode -> {
                 val allowObjCalc = allowObjCalc && (v.contextParent.isRev || v.contextParent.isSource || !metSource) && v.modifiers.all { scheme.getModifier(it.key)!!.revAllowed }
-                if (v.contextParent.isSource && allowObjCalc) {
-                    buildForChildren(v, sobj, res, false, true)
-                    res.add(ExecOrderNode(v.id, ExecType.SourcePropertyCalc))
+                buildForChildren(v, sobj, res, allowObjCalc, true)
+                if (metSource) {
+                    res.add(ExecOrderNode(v.id, ExecType.FilterCalc))
                 } else {
-                    buildForChildren(v, sobj, res, allowObjCalc, true)
-                    if (metSource) {
-                        res.add(ExecOrderNode(v.id, ExecType.FilterCalc))
-                    } else {
-                        res.add(ExecOrderNode(v.id, ExecType.SourceObjCalc))
-                    }
+                    res.add(ExecOrderNode(v.id, ExecType.SourceObjCalc))
                 }
             }
             is ExecutionGraph.ObjAndExecNode -> {
