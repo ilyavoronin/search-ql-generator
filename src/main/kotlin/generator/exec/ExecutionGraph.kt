@@ -394,11 +394,11 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
             val leftObjs = right.objFilter?.let { filter ->
                 left.objs?.filter { filter.accepts(it) }?.toSet()
-            }
+            } ?: left.objs
 
             val rightObjs = left.objFilter?.let { filter ->
                 right.objs?.filter { filter.accepts(it) }?.toSet()
-            }
+            } ?: right.objs
 
             val resObjs = if (leftObjs == null && rightObjs == null) {
                 null
