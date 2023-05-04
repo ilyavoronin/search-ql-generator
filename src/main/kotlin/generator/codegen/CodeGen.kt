@@ -19,6 +19,7 @@ object CodeGen {
         }
 
         saveFileWithPackage("GeneratedObject.kt")
+        saveFileWithPackage("SearchableGeneratedObject.kt")
 
         return Paths.get(path).toAbsolutePath().toString()
     }

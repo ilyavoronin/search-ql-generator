@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import generator.scheme.GeneratorScheme
 import generator.scheme.ast.Definition
 import generator.scheme.ast.Modifier
+import generator.scheme.ast.Object
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.*
@@ -119,7 +120,11 @@ internal object ObjectsGenerator {
             objSpec.inheritedFrom?.let {(inhFrom, _) ->
                 int.addSuperinterface(TypeVariableName.invoke(builtInSPecs[inhFrom]?.name ?: inhFrom))
             }
-            int.addSuperinterface(ClassName(basePack, "GeneratedObject"))
+            if (objSpec is Object) {
+                int.addSuperinterface(ClassName(basePack, "SearchableGeneratedObject"))
+            } else {
+                int.addSuperinterface(ClassName(basePack, "GeneratedObject"))
+            }
 
             for (fieldSpec in objSpec.members) {
                 if (fieldSpec.inherited) {
