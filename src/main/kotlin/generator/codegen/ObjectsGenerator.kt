@@ -110,9 +110,9 @@ internal object ObjectsGenerator {
     private fun genObjects(filterSpecs: List<Definition>, mods: Map<String, Modifier>, builtInSPecs: Map<String, TypeSpec>, basePack: String): Map<String, TypeSpec.Builder> {
         val res = mutableMapOf<String, TypeSpec.Builder>()
         val paramBuiltIns = mapOf(
-            Pair("bool", "Boolean"),
-            Pair("string", "String"),
-            Pair("int", "Int")
+            Pair("bool", "BoolBuiltIn"),
+            Pair("string", "StringBuiltIn"),
+            Pair("int", "IntBuiltIn")
         )
 
         for (objSpec in filterSpecs) {

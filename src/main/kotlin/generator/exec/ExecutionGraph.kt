@@ -187,7 +187,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
     private fun filterObjectsBottomUp(objs: Collection<GeneratedObject>, filters: List<RootPathElem>): Set<GeneratedObject> {
         var finalFilter = SeqObjFilter { setOf(it) }
-        for (filterInfo in filters) {
+        for ((i, filterInfo) in filters.asReversed().withIndex()) {
             val calculatedRes = if (filterInfo.nodeId != -1) {
                 getResult(filterInfo.nodeId) as ObjExecutionResult
             } else {
@@ -196,7 +196,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             val copyFinalFilter = finalFilter
             finalFilter = SeqObjFilter {obj ->
                 copyFinalFilter.filterAndAscend(obj).flatMap {obj ->
-                    if (calculatedRes.objFilter == null && calculatedRes.objs == null || calculatedRes.objs?.contains(obj) == true || calculatedRes.objFilter?.accepts(obj) == true) {
+                    if (i == 0 || filterInfo.nodeId == -1 || calculatedRes.objs?.contains(obj) == true || calculatedRes.objFilter?.accepts(obj) == true) {
                         (filterInfo.method?.call(obj, filterInfo.extField, filterInfo.modifiers) ?: listOf(obj)) as List<GeneratedObject>
                     } else {
                         emptySet()
