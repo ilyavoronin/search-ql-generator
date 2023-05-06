@@ -35,16 +35,102 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
         return (executionResult[root.id] as PathExecutionResult).bottomLevelObjects!!.toList()
     }
 
-    private fun interface ObjFilter {
+    fun interface ObjFilter {
         fun accepts(obj: GeneratedObject): Boolean
+    }
+
+    class ObjRevFilterBuilder(val f: (objf: ObjFilter) -> ObjFilter) {
+        fun build(objf: ObjFilter): ObjFilter {
+            return f(objf)
+        }
+
+        fun buildFinal(): ObjFilter {
+            return f { true }
+        }
+    }
+
+    class CombinedObjFilter(val objFilter: ObjRevFilterBuilder?, val objRetriever: ObjRetriever?) {
+        fun filterObjects(objs: Set<GeneratedObject>?): Pair<Set<GeneratedObject>?, ObjRetriever?> {
+            val resObjs = objFilter?.let { filterB ->
+                val filter = filterB.buildFinal()
+                objs?.filter { filter.accepts(it) }
+            }?.toSet()
+            return Pair(resObjs ?: setOf(), objRetriever)
+        }
+
+        companion object {
+            fun buildFromAnd(c1: CombinedObjFilter, c2: CombinedObjFilter): CombinedObjFilter {
+                val newFilter = if (c1.objFilter != null && c2.objFilter != null) {
+                    ObjRevFilterBuilder {objf ->
+                        val filterLeft = c1.objFilter.build(objf)
+                        val filterRight = c2.objFilter.build(objf)
+
+                        ObjFilter {
+                            filterLeft.accepts(it) && filterRight.accepts(it)
+                        }
+                    }
+                } else {
+                    null
+                }
+
+                val newRetriever = ObjRetriever { obj, intersectWith ->
+                    val left = c1.objRetriever?.retrieve(obj, intersectWith)
+                    val right = c2.objRetriever?.retrieve(obj, intersectWith)
+
+                    val addResLeft = c1.objFilter?.let {filterb ->
+                        val filter = filterb.buildFinal()
+                        right?.filter { filter.accepts(it) }
+                    }
+                    val addResRight = c2.objFilter?.let {filterb ->
+                        val filter = filterb.buildFinal()
+                        left?.filter { filter.accepts(it) }
+                    }
+
+                    val res = if (left != null && right != null) {
+                        left.intersect(right).toMutableSet()
+                    } else {
+                        mutableSetOf()
+                    }
+
+                    addResRight?.let { res.addAll(it) }
+                    addResLeft?.let { res.addAll(it) }
+
+                    res
+                }
+
+                return CombinedObjFilter(newFilter, newRetriever)
+            }
+
+            fun buildFromOr(c1: CombinedObjFilter, c2: CombinedObjFilter): CombinedObjFilter {
+                val newFilter = if (c1.objFilter != null && c2.objFilter != null) {
+                    ObjRevFilterBuilder {objf ->
+                        val filterLeft = c1.objFilter.build(objf)
+                        val filterRight = c2.objFilter.build(objf)
+
+                        ObjFilter { obj -> filterLeft.accepts(obj) || filterRight.accepts(obj) }
+                    }
+                } else if (c1.objFilter != null || c2.objFilter != null) {
+                    (c1.objFilter ?: c2.objFilter)!!
+                } else {
+                    null
+                }
+
+                val newRetriever = ObjRetriever { obj, intersectWith ->
+                    val obj1 = c1.objRetriever?.retrieve(obj, intersectWith)
+                    val obj2 = c2.objRetriever?.retrieve(obj, intersectWith)
+                    obj1?.let { o1 -> obj2?.union(o1) ?: o1 }?: obj2 ?: setOf()
+                }
+
+                return CombinedObjFilter(newFilter, newRetriever)
+            }
+        }
     }
 
 
     sealed interface ExecutionResult
 
     private data class ObjExecutionResult(val objFilter: ObjFilter?, val objs: Set<GeneratedObject>?): ExecutionResult
-
-    data class PathExecutionResult(val objRetriever: ObjRetriever?, val bottomLevelObjects: Set<GeneratedObject>?): ExecutionResult
+    data class PathExecutionResult(val objRetriever: ObjRetriever?, val bottomLevelObjects: Set<GeneratedObject>?, val combinedObjFilter: CombinedObjFilter): ExecutionResult
 
     private val executionResult: MutableMap<Int, ExecutionResult> = mutableMapOf()
 
@@ -118,38 +204,53 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             val left = getChildResult(0) as PathExecutionResult
             val right = getChildResult(1) as PathExecutionResult
 
-            val commonIntersection = if (left.bottomLevelObjects != null && right.bottomLevelObjects != null) {
-                left.bottomLevelObjects.intersect(right.bottomLevelObjects)
+            var commonIntersection = if (left.bottomLevelObjects != null && right.bottomLevelObjects != null) {
+                left.bottomLevelObjects.intersect(right.bottomLevelObjects).toMutableSet()
             } else {
-                setOf()
+                mutableSetOf()
             }
+
+            val (additionalLeftObjects, leftRetriever) = left.combinedObjFilter?.filterObjects(right.bottomLevelObjects) ?: Pair(null, null)
+            val (additionalRightObjects, rightRetriever) = right.combinedObjFilter?.filterObjects(left.bottomLevelObjects) ?: Pair(null, null)
+
+            additionalLeftObjects?.let { commonIntersection.addAll(it) }
+            additionalRightObjects?.let { commonIntersection.addAll(it) }
 
             val rightIntersection = right.bottomLevelObjects?.minus(commonIntersection)
             val leftIntersection = left.bottomLevelObjects?.minus(commonIntersection)
 
-            val newObjRetriever = ObjRetriever { obj, intersectWith ->
-                val rightIntersection = if (rightIntersection == null) {
-                    null
-                } else {
-                    intersectWith?.let { rightIntersection.intersect(it) } ?: rightIntersection
-                }
-                val objs1 = left.objRetriever?.retrieve(obj, rightIntersection)
-                val leftIntersection = if (leftIntersection == null) {
-                    setOf()
-                } else {
-                    intersectWith?.let { leftIntersection.intersect(it) }
-                }
+            val newObjRetriever = if (leftRetriever == null && rightRetriever == null) {
+                null
+            } else {
+                ObjRetriever { obj, intersectWith ->
+                    val rightIntersection = if (rightIntersection == null || rightRetriever != null) {
+                        null
+                    } else {
+                        intersectWith?.let { rightIntersection.intersect(it) } ?: rightIntersection
+                    }
+                    val objs1 = leftRetriever?.retrieve(obj, rightIntersection)
 
-                val objs2 = right.objRetriever?.retrieve(obj, leftIntersection)
+                    val leftIntersection = if (leftIntersection == null || leftRetriever != null) {
+                        null
+                    } else {
+                        intersectWith?.let { leftIntersection.intersect(it) }
+                    }
+                    val objs2 = rightRetriever?.retrieve(obj, leftIntersection)
 
-                if (objs1 == null && objs2 == null) {
-                    emptySet()
-                } else {
-                    objs1?.let { objs2?.union(it) ?: it} ?: objs2!!
+                    val res = if (objs1 != null && objs2 != null) {
+                        objs1 + objs2
+                    } else {
+                        objs1 ?: objs2!!
+                    }
+
+                    res
                 }
             }
 
-            return PathExecutionResult(newObjRetriever, commonIntersection)
+
+            val newCombinedObjFilter = CombinedObjFilter.buildFromAnd(left.combinedObjFilter, right.combinedObjFilter)
+
+            return PathExecutionResult(newObjRetriever, commonIntersection, newCombinedObjFilter)
         }
     }
     inner class PathOrExecutionNode(l: PathExecutionNode, r: PathExecutionNode) : PathExecutionNode() {
@@ -170,7 +271,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                 objs1.union(objs2)
             }
 
-            return PathExecutionResult(newRetriever, newObjs)
+            return PathExecutionResult(newRetriever, newObjs, CombinedObjFilter.buildFromOr(left.combinedObjFilter, right.combinedObjFilter))
         }
     }
 
@@ -230,17 +331,39 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
                     val kmethod = genObjects.getDefMethod(contextParent.parent!!.name, contextParent.memName)
 
-                    if (!contextParent.isMany) {
-                        PathExecutionResult( { obj, intersectWith ->
+                    val retriever = if (!contextParent.isMany) {
+                        ObjRetriever{ obj, intersectWith ->
                             val res = kmethod.call(obj, contextParent, modifiers)
-                            setOf(res as GeneratedObject)
-                        }, setOf())
+                            val currObj = res as GeneratedObject
+                            if (intersectWith != null && intersectWith.contains(currObj)) {
+                                setOf()
+                            } else {
+                                setOf(currObj)
+                            }
+                        }
                     } else {
-                        PathExecutionResult( { obj, intersectWith ->
+                        ObjRetriever { obj, intersectWith ->
                             val res = kmethod.call(obj, contextParent, modifiers) as List<GeneratedObject>
-                            res.toSet()
-                        }, setOf())
+                            if (intersectWith == null) {
+                                res.toSet()
+                            } else {
+                                res.filter { intersectWith.contains(it) }.toSet()
+                            }
+                        }
                     }
+
+                    val combinedFilter = if (contextParent.isRev) {
+                        val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent.name)
+                        CombinedObjFilter(ObjRevFilterBuilder {objf ->
+                            ObjFilter { obj ->
+                                revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
+                            }
+                        }, null)
+                    } else {
+                        CombinedObjFilter(null, retriever)
+                    }
+
+                    PathExecutionResult(retriever, setOf(), combinedFilter)
                 }
                 cond != null && subPath == null -> {
                     val res = getChildResult(0) as ObjExecutionResult
@@ -249,8 +372,8 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         ExecType.FilterCalc -> {
                             val getMethod = genObjects.getDefMethod(contextParent.parent!!.name, contextParent.memName)
                             val resObjs = res.objs?.let { filterObjectsBottomUp(it, rootPath!!)}
-                            val resRetr = if (res.objFilter != null) {
-                                ObjRetriever { obj, intersectWith ->
+                            if (res.objFilter != null) {
+                                val retr = ObjRetriever { obj, intersectWith ->
                                     val subObj = getMethod.call(obj, contextParent, modifiers)
                                     var subObjs: List<GeneratedObject>
                                     if (contextParent.isMany) {
@@ -272,10 +395,23 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                     }
                                     subObjs.toSet()
                                 }
+
+                                val combinedFilter = if (contextParent.isRev) {
+                                    val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent.name)
+                                    CombinedObjFilter(ObjRevFilterBuilder { objf ->
+                                        ObjFilter {obj ->
+                                            res.objFilter.accepts(obj) &&
+                                            revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
+                                        }
+                                    }, null)
+                                } else {
+                                    CombinedObjFilter(null, retr)
+                                }
+
+                                PathExecutionResult(retr, resObjs, combinedFilter)
                             } else {
-                                null
+                                PathExecutionResult(null, resObjs, CombinedObjFilter(null, null))
                             }
-                            PathExecutionResult(resRetr, resObjs)
                         }
                         ExecType.SourceObjCalc -> {
                             val objs = genObjects.getAllObjectsOfType(obj.name)
@@ -288,7 +424,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                             res.objs?.let {finalRes.addAll(it)}
 
                             val filteredFinalRes = filterObjectsBottomUp(finalRes, rootPath!!)
-                            PathExecutionResult(null, filteredFinalRes)
+                            PathExecutionResult(null, filteredFinalRes, CombinedObjFilter(null, null))
                         }
                         ExecType.SourcePropertyCalc -> {
                             throw IllegalStateException("Buiding path from property not implemented")
@@ -312,18 +448,34 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                     res
                                 }
                             }
-                            PathExecutionResult(newRet, res.bottomLevelObjects)
+                            val combinedFilter = if (contextParent.isRev) {
+                                val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent.name)
+
+                                val objFilterBuilder = res.combinedObjFilter.objFilter?.let { fb ->
+                                    ObjRevFilterBuilder { objf ->
+                                        fb.build { obj ->
+                                            revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
+                                        }
+                                    }
+                                }
+                                CombinedObjFilter(objFilterBuilder, res.combinedObjFilter.objRetriever?.let { ret -> ObjRetriever {obj, intersectWith ->
+                                    subGet.callToList(obj, contextParent, modifiers).flatMap { ret.retrieve(it, intersectWith) }.toSet()
+                                } })
+                            } else {
+                                CombinedObjFilter(null, newRet)
+                            }
+                            PathExecutionResult(newRet, res.bottomLevelObjects, combinedFilter)
                         }
                         ExecType.SourceObjCalc -> {
                             if (res.objRetriever == null) {
-                                PathExecutionResult(null, res.bottomLevelObjects)
+                                PathExecutionResult(null, res.bottomLevelObjects, CombinedObjFilter(null, null))
                             } else {
                                 val objs = filterObjectsBottomUp(genObjects.getAllObjectsOfType(obj.name), rootPath!!)
 
                                 val resObjs = objs.flatMap { res.objRetriever.retrieve(it, null) }.toMutableSet()
                                 res.bottomLevelObjects?.let { resObjs.addAll(it) }
 
-                                PathExecutionResult(null, resObjs)
+                                PathExecutionResult(null, resObjs, CombinedObjFilter(null, null))
                             }
                         }
                         ExecType.SourcePropertyCalc -> {
@@ -356,7 +508,36 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                 }
                             } }
 
-                            PathExecutionResult(finalRet, finalObjects)
+                            val combinedFilter = if (resCond.objFilter != null) {
+                                if (contextParent.isRev) {
+                                    val revMethod = genObjects.getRevDefMethod(obj.name, contextParent.parent.name)
+
+                                    val objFilterBuilder = resPath.combinedObjFilter.objFilter?.let { fb ->
+                                        ObjRevFilterBuilder { objf ->
+                                            fb.build { obj ->
+                                                (resCond.objFilter.accepts(obj))
+                                                        &&
+                                                        revMethod.call(obj, contextParent, modifiers)
+                                                            .any { objf.accepts(it) }
+                                            }
+                                        }
+                                    }
+                                    CombinedObjFilter(
+                                        objFilterBuilder,
+                                        resPath.combinedObjFilter.objRetriever?.let { ret ->
+                                            ObjRetriever { obj, intersectWith ->
+                                                getSub.callToList(obj, contextParent, modifiers)
+                                                    .flatMap { ret.retrieve(it, intersectWith) }.toSet()
+                                            }
+                                        })
+                                } else {
+                                    CombinedObjFilter(null, finalRet)
+                                }
+                            } else {
+                                CombinedObjFilter(null, null)
+                            }
+
+                            PathExecutionResult(finalRet, finalObjects, combinedFilter)
                         }
                         ExecType.SourceObjCalc -> {
                             val finalObjs = if (resCond.objFilter == null) {
@@ -371,7 +552,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                             val finalSobjs = mutableSetOf<GeneratedObject>()
                             resPath.bottomLevelObjects?.let { finalSobjs.addAll(it) }
                             resPath.objRetriever?.let { ret -> finalSobjs.addAll(filteredFinalObjects.flatMap { ret.retrieve(it, null) }) }
-                            PathExecutionResult(null, finalSobjs)
+                            PathExecutionResult(null, finalSobjs, CombinedObjFilter(null, null))
                         }
                         ExecType.SourcePropertyCalc -> {
                             throw IllegalStateException("incorrect calc type")

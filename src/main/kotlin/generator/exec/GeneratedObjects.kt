@@ -30,13 +30,23 @@ class GeneratedObjects(
             }.toTypedArray()
             return get.call(obj, *mods)
         }
+
+        fun callToList(obj: GeneratedObject, field: ExtendedDefField, modifiers: Map<String, ModValueType>): List<GeneratedObject> {
+            val res = call(obj, field, modifiers)
+
+            return if (field.isMany) {
+                res as List<GeneratedObject>
+            } else {
+                listOf(res as GeneratedObject)
+            }
+        }
     }
 
     class GetRevMethod(
         private val scheme: GeneratorScheme,
         private val get: KCallable<*>,
     ) {
-        fun call(obj: GeneratedObject, field: ExtendedDefField, modifiers: Map<String, ModValueType>): Any? {
+        fun call(obj: GeneratedObject, field: ExtendedDefField, modifiers: Map<String, ModValueType>): List<GeneratedObject> {
             val mods = field.modifiers.mapNotNull {
                 val mod = scheme.getModifier(it)!!
                 if (mod.revAllowed) {
@@ -52,7 +62,7 @@ class GeneratedObjects(
                     null
                 }
             }.toTypedArray()
-            return get.call(obj, *mods)
+            return get.call(obj, *mods) as List<GeneratedObject>
         }
     }
 
