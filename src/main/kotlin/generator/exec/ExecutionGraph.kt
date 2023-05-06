@@ -73,29 +73,33 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     null
                 }
 
-                val newRetriever = ObjRetriever { obj, intersectWith ->
-                    val left = c1.objRetriever?.retrieve(obj, intersectWith)
-                    val right = c2.objRetriever?.retrieve(obj, intersectWith)
+                val newRetriever = if (c1.objRetriever != null || c2.objRetriever != null) {
+                    ObjRetriever { obj, intersectWith ->
+                        val left = c1.objRetriever?.retrieve(obj, intersectWith)
+                        val right = c2.objRetriever?.retrieve(obj, intersectWith)
 
-                    val addResLeft = c1.objFilter?.let {filterb ->
-                        val filter = filterb.buildFinal()
-                        right?.filter { filter.accepts(it) }
+                        val addResLeft = c1.objFilter?.let {filterb ->
+                            val filter = filterb.buildFinal()
+                            right?.filter { filter.accepts(it) }
+                        }
+                        val addResRight = c2.objFilter?.let {filterb ->
+                            val filter = filterb.buildFinal()
+                            left?.filter { filter.accepts(it) }
+                        }
+
+                        val res = if (left != null && right != null) {
+                            left.intersect(right).toMutableSet()
+                        } else {
+                            mutableSetOf()
+                        }
+
+                        addResRight?.let { res.addAll(it) }
+                        addResLeft?.let { res.addAll(it) }
+
+                        res
                     }
-                    val addResRight = c2.objFilter?.let {filterb ->
-                        val filter = filterb.buildFinal()
-                        left?.filter { filter.accepts(it) }
-                    }
-
-                    val res = if (left != null && right != null) {
-                        left.intersect(right).toMutableSet()
-                    } else {
-                        mutableSetOf()
-                    }
-
-                    addResRight?.let { res.addAll(it) }
-                    addResLeft?.let { res.addAll(it) }
-
-                    res
+                } else {
+                    null
                 }
 
                 return CombinedObjFilter(newFilter, newRetriever)
@@ -238,7 +242,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     val objs2 = rightRetriever?.retrieve(obj, leftIntersection)
 
                     val res = if (objs1 != null && objs2 != null) {
-                        objs1 + objs2
+                        objs1.intersect(objs2)
                     } else {
                         objs1 ?: objs2!!
                     }
@@ -335,7 +339,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                         ObjRetriever{ obj, intersectWith ->
                             val res = kmethod.call(obj, contextParent, modifiers)
                             val currObj = res as GeneratedObject
-                            if (intersectWith != null && intersectWith.contains(currObj)) {
+                            if (intersectWith != null && !intersectWith.contains(currObj)) {
                                 setOf()
                             } else {
                                 setOf(currObj)
@@ -401,9 +405,9 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                     CombinedObjFilter(ObjRevFilterBuilder { objf ->
                                         ObjFilter {obj ->
                                             res.objFilter.accepts(obj) &&
-                                            revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
+                                                    revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
                                         }
-                                    }, null)
+                                    }, retr)
                                 } else {
                                     CombinedObjFilter(null, retr)
                                 }
@@ -527,6 +531,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                         resPath.combinedObjFilter.objRetriever?.let { ret ->
                                             ObjRetriever { obj, intersectWith ->
                                                 getSub.callToList(obj, contextParent, modifiers)
+                                                    .filter{resCond.objFilter.accepts(it)}
                                                     .flatMap { ret.retrieve(it, intersectWith) }.toSet()
                                             }
                                         })
