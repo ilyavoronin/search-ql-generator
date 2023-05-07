@@ -128,10 +128,14 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                     null
                 }
 
-                val newRetriever = ObjRetriever { obj, intersectWith ->
-                    val obj1 = c1.objRetriever?.retrieve(obj, intersectWith)
-                    val obj2 = c2.objRetriever?.retrieve(obj, intersectWith)
-                    obj1?.let { o1 -> obj2?.union(o1) ?: o1 }?: obj2 ?: setOf()
+                val newRetriever = if (c1.objRetriever != null || c2.objRetriever != null) {
+                    ObjRetriever { obj, intersectWith ->
+                        val obj1 = c1.objRetriever?.retrieve(obj, intersectWith)
+                        val obj2 = c2.objRetriever?.retrieve(obj, intersectWith)
+                        obj1?.let { o1 -> obj2?.union(o1) ?: o1 }?: obj2!!
+                    }
+                } else {
+                    null
                 }
 
                 return CombinedObjFilter(newFilter, newRetriever)
@@ -277,11 +281,15 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             val right = getChildResult(1) as PathExecutionResult
 
             val newObjs = left.bottomLevelObjects?.union(right.bottomLevelObjects ?: listOf())
-            val newRetriever = ObjRetriever {obj, intersectWith ->
-                val objs1 = left.objRetriever?.retrieve(obj, intersectWith) ?: setOf()
-                val objs2 = right.objRetriever?.retrieve(obj, intersectWith) ?: setOf()
+            val newRetriever = if (left.objRetriever != null || right.objRetriever != null) {
+                ObjRetriever {obj, intersectWith ->
+                    val objs1 = left.objRetriever?.retrieve(obj, intersectWith) ?: setOf()
+                    val objs2 = right.objRetriever?.retrieve(obj, intersectWith) ?: setOf()
 
-                objs1.union(objs2)
+                    objs1.union(objs2)
+                }
+            } else {
+                null
             }
 
             return PathExecutionResult(newRetriever, newObjs, CombinedObjFilter.buildFromOr(left.combinedObjFilter, right.combinedObjFilter))
@@ -416,7 +424,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                             res.objFilter.accepts(obj) &&
                                                     revMethod.call(obj, contextParent, modifiers).any { objf.accepts(it) }
                                         }
-                                    }, retr)
+                                    }, null)
                                 } else {
                                     CombinedObjFilter(null, retr)
                                 }
