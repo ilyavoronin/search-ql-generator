@@ -1,6 +1,5 @@
 import generator.codegen.CodeGen
 import generator.scheme.GeneratorScheme
-import generator.codegen.ObjectsGenerator
 import generator.scheme.parser.astParser
 import parser.*
 import java.io.File
@@ -13,7 +12,10 @@ fun generateCode(scheme: String, rootPath: String, pack: String) {
     println("Generated into $absPath")
 }
 
-fun main() {
-    val input = File("../genTCSearchQL/teamcity.gs").readText()
-    generateCode(input, "../genTCSearchQL/src/main/kotlin", "gen.searchQL")
+fun main(args: Array<String>) {
+    val scheme = args[0]
+    val rootPath = args[1]
+    val pack = args[2]
+    val input = File(scheme).readText()
+    generateCode(input, rootPath, pack)
 }

@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -5,8 +6,8 @@ plugins {
     application
 }
 
-group = "org.example"
-version = "1.0-SNAPSHOT"
+group = "searchql-gen"
+version = "1.0"
 
 repositories {
     mavenCentral()
@@ -20,6 +21,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    dependsOn("beforeTests")
 }
 
 tasks.withType<KotlinCompile> {
@@ -28,4 +30,22 @@ tasks.withType<KotlinCompile> {
 
 application {
     mainClass.set("MainKt")
+}
+
+tasks {
+    task("buildGenerator", type=Jar::class) {
+        archiveFileName.set("search-ql-generator.jar")
+        manifest {
+            attributes(mapOf("Main-Class" to "MainKt"))
+        }
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        isZip64 = true
+        from (project.configurations.runtimeClasspath.get().map {if (it.isDirectory) it else zipTree(it) })
+        with(getByName("jar") as CopySpec)
+    }
+
+    task("beforeTests", type=JavaExec::class) {
+        classpath = sourceSets["main"].runtimeClasspath
+        main = "BeforeTestsKt"
+    }
 }
