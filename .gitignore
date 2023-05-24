@@ -2,3 +2,4 @@ build
 .gradle
 .idea
 genSearchQL/
+src/test/kotlin/generated/

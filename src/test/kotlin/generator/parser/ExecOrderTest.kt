@@ -51,7 +51,7 @@ class ExecOrderTest {
         val p = getLangParser(scheme)
         val res = p.parse(input.inp()).unwrap()
 
-        val graph = ExecutionGraph(scheme, GeneratedObjects(object : ObjectsSource{}, scheme, listOf(BuildConf::class, Template::class), listOf()), res)
+        val graph = ExecutionGraph(scheme, GeneratedObjects(object : ObjectsSource{}, scheme, listOf(BuildConf::class, Template::class), listOf(), true), res)
 
         val order = FixedBottomUpExecOrder(scheme).genExecOrder(graph.root, graph.sobj)
 

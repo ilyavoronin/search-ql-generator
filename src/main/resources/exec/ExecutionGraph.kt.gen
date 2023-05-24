@@ -562,10 +562,12 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                             if (contextParent.parent != null || resCond.objFilter == null || resPath.combinedObjFilter.objRetriever != null) {
                                 val finalObjs = if (resCond.objFilter == null) {
                                     resCond.objs!!
-                                } else {
+                                } else if (resPath.objRetriever != null) {
                                     val objs = genObjects.getAllObjectsOfType(obj.name)
 
                                     objs.filter { resCond.objFilter.accepts(it) || resCond.objs?.contains(it) ?: false }
+                                } else {
+                                    listOf()
                                 }
                                 val filteredFinalObjects = filterObjectsBottomUp(finalObjs, rootPath!!)
 
@@ -581,18 +583,24 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                                 }
                                 PathExecutionResult(null, finalSobjs, CombinedObjFilter(null, null))
                             } else {
+                                // top level objects case, in order to not calculate all objects when there is PathAndExecNode above
                                 val retriever = ObjRetriever {_, _ ->
-                                    val objs = genObjects.getAllObjectsOfType(obj.name)
-                                    val final = objs.filter { resCond.objFilter.accepts(it) || resCond.objs?.contains(it) ?: false }
-                                    val filteredFinalObjects = filterObjectsBottomUp(final, rootPath!!)
-                                    val result = resPath.objRetriever?.let { ret ->
-                                        filteredFinalObjects.flatMap {
-                                            ret.retrieve(
-                                                it,
-                                                null
-                                            )
+                                    val result = if (resPath.objRetriever != null) {
+                                        val objs = genObjects.getAllObjectsOfType(obj.name)
+                                        val final =
+                                            objs.filter { resCond.objFilter.accepts(it) || resCond.objs?.contains(it) ?: false }
+                                        val filteredFinalObjects = filterObjectsBottomUp(final, rootPath!!)
+                                        resPath.objRetriever.let { ret ->
+                                            filteredFinalObjects.flatMap {
+                                                ret.retrieve(
+                                                    it,
+                                                    null
+                                                )
+                                            }
                                         }
-                                    } ?: listOf()
+                                    } else {
+                                        resPath.bottomLevelObjects!!
+                                    }
                                     result.toSet()
                                 }
                                 val objFilterBuilder = resPath.combinedObjFilter.objFilter?.let { fb ->
@@ -622,20 +630,24 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
         override fun executeInternal(t: ExecType): ExecutionResult {
             val left = getChildResult(0) as ObjExecutionResult
-            val right = getChildResult(0) as ObjExecutionResult
+            val right = getChildResult(1) as ObjExecutionResult
 
             val leftObjs = right.objFilter?.let { filter ->
                 left.objs?.filter { filter.accepts(it) }?.toSet()
-            } ?: left.objs
+            }
 
             val rightObjs = left.objFilter?.let { filter ->
                 right.objs?.filter { filter.accepts(it) }?.toSet()
-            } ?: right.objs
+            }
 
             val resObjs = if (leftObjs == null && rightObjs == null) {
                 null
             } else {
                 leftObjs?.union(rightObjs ?: emptySet()) ?: rightObjs
+            }?.toMutableSet()
+
+            if (left.objs != null && right.objs != null) {
+                resObjs?.addAll(left.objs.intersect(right.objs))
             }
 
             val objFilter = if (left.objFilter != null && right.objFilter != null) {
@@ -656,7 +668,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
 
         override fun executeInternal(t: ExecType): ExecutionResult {
             val left = getChildResult(0) as ObjExecutionResult
-            val right = getChildResult(0) as ObjExecutionResult
+            val right = getChildResult(1) as ObjExecutionResult
 
             val objFilter = if (left.objFilter != null || right.objFilter != null) {
                 ObjFilter { obj ->
@@ -730,15 +742,14 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
                 ExecType.SourceObjCalc -> {
                     val resObjs = res.objs?.toMutableSet() ?: mutableSetOf()
                     if (res.objFilter != null) {
-                        val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent!!.name)
                         val objs = genObjects.getAllObjectsOfType(obj.name)
                             .filter { res.objFilter.accepts(it) }
-                            .flatMap { revMethod.call(it, extendedDefField, modifiers) as List<GeneratedObject> }
                             .toSet()
 
                         resObjs.addAll(objs)
                     }
-                    ObjExecutionResult(null, resObjs)
+                    val revMethod = genObjects.getRevDefMethod(obj.name, extendedDefField.parent!!.name)
+                    ObjExecutionResult(null, resObjs.flatMap { revMethod.call(it, extendedDefField, modifiers)}.toSet())
                 }
                 ExecType.SourcePropertyCalc -> {
                     val objects = genObjects.getAllObjectsByProperty(
@@ -930,7 +941,7 @@ class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjec
             newPathToRoot?.add(
                 RootPathElem(
                     -1,
-                    parentObjField.parent?.let {(genObjects.getRevDefMethod(subObj.memType, currObj.name))},
+                    genObjects.getRevDefMethod(subObj.memType, currObj.name),
                     parentObjField,
                     mapOf()
                 )

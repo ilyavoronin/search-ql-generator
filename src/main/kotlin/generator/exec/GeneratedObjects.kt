@@ -14,7 +14,8 @@ class GeneratedObjects(
     private val source: ObjectsSource,
     private val scheme: GeneratorScheme,
     objs: List<KClass<out GeneratedObject>>,
-    filters: List<KClass<out GeneratedObject>>
+    filters: List<KClass<out GeneratedObject>>,
+    val testVersion: Boolean
 ) {
     class GetObjectMethod(
         private val scheme: GeneratorScheme,
@@ -82,6 +83,9 @@ class GeneratedObjects(
     }
 
     fun getRevDefMethod(name: String, revName: String): GetRevMethod {
+        if (testVersion) {
+            return GetRevMethod(scheme, this::getAllObjectsByProperty)
+        }
         val methodName = "parent${revName.capitalize()}"
         return GetRevMethod(scheme, defsClasses[name]!!.members.single { it.name == methodName })
     }
