@@ -53,7 +53,7 @@ class ExecOrderTest {
 
         val graph = ExecutionGraph(scheme, GeneratedObjects(object : ObjectsSource{}, scheme, listOf(BuildConf::class, Template::class), listOf(), true), res)
 
-        val order = FixedBottomUpExecOrder(scheme).genExecOrder(graph.root, graph.sobj)
+        val order = FixedBottomUpExecOrder().genExecOrder(graph.root, scheme, graph.sobj)
 
         val expectedOrder = listOf(5,6,7,8,9,10,11,12,13,14,15,16,17,2,3,0,1,4,18,19,20,21,22,23,24,25,29,30,26,27,28,31,32,33,34,35,36,37)
         assertEquals(expectedOrder, order.map {it.nodeId})

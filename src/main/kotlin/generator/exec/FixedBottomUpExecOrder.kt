@@ -5,8 +5,10 @@ import generator.scheme.GeneratorScheme
 import generator.scheme.ast.Definition
 import java.lang.RuntimeException
 
-class FixedBottomUpExecOrder(val scheme: GeneratorScheme) : ExecutionOrder {
-    override fun genExecOrder(root: ExecutionGraph.PathExecutionNode, sobj: Definition): List<ExecOrderNode> {
+class FixedBottomUpExecOrder : ExecutionOrder {
+    lateinit var scheme: GeneratorScheme
+    override fun genExecOrder(root: ExecutionGraph.PathExecutionNode, scheme_: GeneratorScheme, sobj: Definition): List<ExecOrderNode> {
+        scheme = scheme_
         val resOrder = mutableListOf<ExecOrderNode>()
         val used = mutableMapOf<Int, Boolean>()
         buildOrder(root, sobj, resOrder, true, used, false)

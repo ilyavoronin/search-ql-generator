@@ -51,7 +51,8 @@ internal object ExecGenerator {
 
 
         saveFileWithPackage("exec", "ExecutionOrder.kt",
-            joinPackages(basePack, "scheme", "Definition")
+            joinPackages(basePack, "scheme", "Definition"),
+            joinPackages(basePack, "scheme", "GeneratorScheme")
         )
 
         saveFileWithPackage("exec", "ExecutionGraph.kt",
@@ -120,7 +121,12 @@ internal object ExecGenerator {
 
         val constructor = FunSpec.constructorBuilder()
             .addParameter("source", TypeVariableName.invoke("ObjectsSource"))
-            .addCode("""                
+            .addParameter(
+                ParameterSpec
+                    .builder("order", TypeVariableName.invoke("ExecutionOrder"))
+                    .defaultValue("FixedBottomUpExecOrder()")
+                    .build()
+            ).addCode("""                
                 scheme = GeneratorScheme(listOf($astStr))
                 parser = getLangParser(scheme)
                 genObjects = GeneratedObjects(
@@ -149,6 +155,13 @@ internal object ExecGenerator {
                     .addModifiers(KModifier.PRIVATE)
                     .build()
             )
+            .addProperty(
+                PropertySpec
+                    .builder("orderGen", TypeVariableName.invoke("ExecutionOrder"))
+                    .initializer("order")
+                    .addModifiers(KModifier.PRIVATE)
+                    .build()
+            )
 
         res.addFunction(
             FunSpec.builder("execute")
@@ -158,7 +171,7 @@ internal object ExecGenerator {
                     """
                         val fquery = parser.parse(query.inp()).unwrap()
                         val execGraph = ExecutionGraph(scheme, genObjects, fquery)
-                        return execGraph.execute(FixedBottomUpExecOrder(scheme))
+                        return execGraph.execute(orderGen)
                     """.trimIndent()
                 )
                 .build()

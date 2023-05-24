@@ -27,7 +27,7 @@ public interface IntBuiltIn {
 class ExecutionGraph(val scheme: GeneratorScheme, val genObjects: GeneratedObjects, val findQuery: FindQuery) {
 
     fun execute(order: ExecutionOrder): List<GeneratedObject> {
-        val order = order.genExecOrder(root, sobj)
+        val order = order.genExecOrder(root, scheme, sobj)
         for (ordElem in order) {
             idToNode[ordElem.nodeId]!!.execute(ordElem.type)
         }

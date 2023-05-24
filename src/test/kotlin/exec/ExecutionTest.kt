@@ -1,6 +1,7 @@
 package exec
 
 import generated.exec.exec.ExecutionEngine
+import generated.exec.exec.FixedBottomUpExecOrder
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -9,7 +10,7 @@ class ExecutionTest {
 
     val engine: ExecutionEngine
     init {
-        engine = ExecutionEngine(ObjSourceImpl())
+        engine = ExecutionEngine(ObjSourceImpl(), FixedBottomUpExecOrder())
     }
 
     @BeforeTest
